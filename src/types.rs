@@ -1,5 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
+use crossterm::event::KeyCode;
 use ratatui::{Terminal, backend::CrosstermBackend, layout::Rect};
 use tokio::sync::{Mutex, broadcast, mpsc::UnboundedSender};
 
@@ -17,15 +18,20 @@ pub enum ClientEvent {
 }
 
 #[derive(Clone)]
-pub enum ServerEvent {
-    Increment,
-    Decrement,
+pub enum Message {
+    KeyPressed(KeyCode),
+    TerminalResized(Rect),
+}
+
+#[derive(Clone)]
+pub enum Command {
+    CounterChanged { value: i32 },
 }
 
 #[derive(Clone)]
 pub struct ServerState {
     pub current_value: Arc<Mutex<i32>>,
-    pub broadcast_sender: broadcast::Sender<ServerEvent>,
+    pub broadcast_sender: broadcast::Sender<Command>,
 }
 
 impl Default for ServerState {
@@ -48,19 +54,9 @@ pub struct InputParser {
     pub pending_bytes: Vec<u8>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct AppServer {
     pub clients: Arc<Mutex<HashMap<usize, UnboundedSender<ClientEvent>>>>,
     pub server_state: ServerState,
     pub client_id: usize,
-}
-
-impl Default for AppServer {
-    fn default() -> Self {
-        Self {
-            clients: Arc::new(Mutex::new(HashMap::new())),
-            server_state: ServerState::default(),
-            client_id: 0,
-        }
-    }
 }

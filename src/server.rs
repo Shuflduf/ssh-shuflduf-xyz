@@ -17,7 +17,7 @@ use tokio::sync::{
 };
 
 use crate::types::{
-    AppServer, AppState, ClientEvent, InputParser, ServerEvent, ServerState, SshTerminal,
+    AppServer, AppState, ClientEvent, Command, InputParser, Message, ServerState, SshTerminal,
     TerminalHandle,
 };
 
@@ -102,6 +102,15 @@ impl Handler for AppServer {
         Ok(Auth::Accept)
     }
 
+    async fn shell_request(
+        &mut self,
+        channel: ChannelId,
+        session: &mut Session,
+    ) -> Result<(), Self::Error> {
+        let _ = session.channel_success(channel);
+        Ok(())
+    }
+
     async fn data(
         &mut self,
         _channel: ChannelId,
@@ -176,27 +185,40 @@ async fn client_event_loop(
     mut client_event_receiver: UnboundedReceiver<ClientEvent>,
 ) {
     let mut input_parser = InputParser::default();
-    let mut server_event_receiver = server_state.broadcast_sender.subscribe();
+    let mut server_command_receiver = server_state.broadcast_sender.subscribe();
     let (mut needs_redraw, mut clear_screen) = (true, true);
 
     loop {
         tokio::select! {
             client_event = client_event_receiver.recv() => match client_event {
-                Some(ClientEvent::Input(incoming_bytes)) => {
-                    for key_event in input_parser.feed(&incoming_bytes) {
-                        handle_key_press(&mut app, &server_state, &mut needs_redraw, key_event.code).await;
+                Some(client_event) => {
+                    for message in handle_event(client_event, &mut input_parser) {
+                        handle_message(
+                            message,
+                            &mut app,
+                            &server_state,
+                            &mut needs_redraw,
+                            &mut terminal,
+                            &mut clear_screen,
+                        )
+                        .await;
                     }
-                }
-                Some(ClientEvent::Resize(new_size_rect)) => {
-                    let _ = terminal.resize(new_size_rect);
-                    needs_redraw = true;
-                    clear_screen = true;
                 }
                 None => break,
             },
-            _server_event = server_event_receiver.recv() => {
-                needs_redraw = true;
-            }
+            server_command = server_command_receiver.recv() => match server_command {
+                Ok(command) => {
+                    let previous_counter = app.counter;
+                    app.apply_command(&command);
+                    if app.counter != previous_counter {
+                        needs_redraw = true;
+                    }
+                }
+                Err(_) => {
+                    app.counter = *server_state.current_value.lock().await;
+                    needs_redraw = true;
+                }
+            },
         }
 
         if app.should_exit {
@@ -205,8 +227,6 @@ async fn client_event_loop(
         }
 
         if needs_redraw {
-            app.counter = *server_state.current_value.lock().await;
-
             let clear_this_frame = clear_screen;
             clear_screen = false;
             let _ = terminal.draw(|frame| {
@@ -222,29 +242,56 @@ async fn client_event_loop(
     clients.lock().await.remove(&client_id);
 }
 
-async fn handle_key_press(
+fn handle_event(client_event: ClientEvent, input_parser: &mut InputParser) -> Vec<Message> {
+    match client_event {
+        ClientEvent::Input(incoming_bytes) => input_parser
+            .feed(&incoming_bytes)
+            .into_iter()
+            .map(|key_event| Message::KeyPressed(key_event.code))
+            .collect(),
+        ClientEvent::Resize(new_size_rect) => vec![Message::TerminalResized(new_size_rect)],
+    }
+}
+
+async fn handle_message(
+    message: Message,
     app: &mut AppState,
     server_state: &ServerState,
     needs_redraw: &mut bool,
-    key_code: KeyCode,
+    terminal: &mut SshTerminal,
+    clear_screen: &mut bool,
 ) {
+    match message {
+        Message::KeyPressed(key_code) => match key_code {
+            KeyCode::Char('q') => app.should_exit = true,
+            KeyCode::Left | KeyCode::Right => {
+                let command = reduce_counter_command(server_state, key_code).await;
+                app.apply_command(&command);
+                let _ = server_state.broadcast_sender.send(command);
+                *needs_redraw = true;
+            }
+            _ => {}
+        },
+        Message::TerminalResized(new_size_rect) => {
+            let _ = terminal.resize(new_size_rect);
+            *needs_redraw = true;
+            *clear_screen = true;
+        }
+    }
+}
+
+async fn reduce_counter_command(server_state: &ServerState, key_code: KeyCode) -> Command {
+    let mut counter = server_state.current_value.lock().await;
     match key_code {
-        KeyCode::Char('q') => app.should_exit = true,
+        KeyCode::Right => *counter += 1,
         KeyCode::Left => {
-            let mut counter = server_state.current_value.lock().await;
             if *counter > 0 {
                 *counter -= 1;
             }
-            let _ = server_state.broadcast_sender.send(ServerEvent::Decrement);
-            *needs_redraw = true;
         }
-        KeyCode::Right => {
-            *server_state.current_value.lock().await += 1;
-            let _ = server_state.broadcast_sender.send(ServerEvent::Increment);
-            *needs_redraw = true;
-        }
-        _ => {}
+        _ => unreachable!(),
     }
+    Command::CounterChanged { value: *counter }
 }
 
 impl Drop for AppServer {

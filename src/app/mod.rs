@@ -8,9 +8,14 @@ use ratatui::{
     widgets::{Block, Paragraph, Widget},
 };
 
-use crate::types::AppState;
+use crate::types::{AppState, Command};
 
 impl AppState {
+    pub fn apply_command(&mut self, command: &Command) {
+        match command {
+            Command::CounterChanged { value } => self.counter = *value,
+        }
+    }
     pub fn draw(&self, frame: &mut Frame) {
         frame.render_widget(self, frame.area());
     }
