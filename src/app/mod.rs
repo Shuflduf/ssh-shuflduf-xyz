@@ -1,5 +1,3 @@
-use std::{any::Any, sync::Arc};
-
 use async_trait::async_trait;
 use crossterm::event::KeyCode;
 use ratatui::{
@@ -11,7 +9,7 @@ use ratatui::{
     widgets::Block,
 };
 
-use crate::types::{ClientState, ServerMessage, ServerState};
+use crate::types::{ClientState, Focus, MainPane, ServerMessage, ServerState};
 
 mod counter;
 mod games;
@@ -34,23 +32,24 @@ impl ClientState {
         }
     }
 
-    pub fn draw(&self, frame: &mut Frame) {
+    pub fn draw(&mut self, frame: &mut Frame) {
         let layout =
             Layout::horizontal([Constraint::Max(30), Constraint::Fill(1)]).split(frame.area());
 
-        frame.render_widget(&self.sidebar, layout[0]);
-        frame.render_widget(&self.games, layout[1]);
+        frame.render_stateful_widget(&self.sidebar, layout[0], &mut self.focus);
+        match self.current_pane {
+            MainPane::Counter => {
+                frame.render_stateful_widget(&self.counter, layout[1], &mut self.focus);
+            }
+            MainPane::Games => {
+                frame.render_stateful_widget(&self.games, layout[1], &mut self.focus);
+            }
+        }
         // frame.render_widget(&self.counter, layout[1]);
     }
 
-    pub fn set_focus(&mut self, index: u8, needs_redraw: &mut bool) {
-        self.sidebar.focused = false;
-        self.counter.focused = false;
-        match index {
-            1 => self.sidebar.focused = true,
-            2 => self.counter.focused = true,
-            _ => unreachable!(),
-        }
+    pub fn set_focus(&mut self, focus: Focus, needs_redraw: &mut bool) {
+        self.focus = focus;
         *needs_redraw = true;
     }
 
@@ -60,15 +59,24 @@ impl ClientState {
         server_state: &ServerState,
         needs_redraw: &mut bool,
     ) {
-        if self.sidebar.focused {
-            self.sidebar
-                .handle_key(key_code, server_state, needs_redraw)
-                .await;
-        }
-        if self.counter.focused {
-            self.counter
-                .handle_key(key_code, server_state, needs_redraw)
-                .await;
+        match self.focus {
+            Focus::Sidebar => {
+                self.sidebar
+                    .handle_key(key_code, server_state, needs_redraw)
+                    .await;
+            }
+            Focus::Pane => match self.current_pane {
+                MainPane::Counter => {
+                    self.counter
+                        .handle_key(key_code, server_state, needs_redraw)
+                        .await;
+                }
+                MainPane::Games => {
+                    self.counter
+                        .handle_key(key_code, server_state, needs_redraw)
+                        .await;
+                }
+            },
         }
     }
 }

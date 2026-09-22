@@ -2,37 +2,57 @@ use std::{collections::HashMap, sync::Arc};
 
 use crossterm::event::KeyCode;
 use ratatui::{Terminal, backend::CrosstermBackend, layout::Rect};
+use strum::{Display, EnumCount, EnumIter};
 use tokio::{
     sync::{Mutex, broadcast, mpsc::UnboundedSender},
     time::Instant,
 };
-
-use crate::app::TerminalPane;
 
 pub type SshTerminal = Terminal<CrosstermBackend<TerminalHandle>>;
 
 // client stuff
 
 #[derive(Default)]
+pub enum MainPane {
+    #[default]
+    Counter,
+    Games,
+}
+
+#[derive(Default, PartialEq, Eq)]
+pub enum Focus {
+    Sidebar,
+    #[default]
+    Pane,
+}
+
+#[derive(Default, Debug, EnumIter, EnumCount, Display)]
+pub enum SidebarItem {
+    #[default]
+    Counter,
+    Games,
+}
+
+#[derive(Default)]
 pub struct Sidebar {
-    pub focused: bool,
-    pub visible: bool,
-    pub selected_item: usize,
+    pub item: SidebarItem,
 }
 
 #[derive(Default)]
 pub struct Counter {
-    pub focused: bool,
-    pub visible: bool,
     pub count: u32,
     pub last_increment_time: Option<Instant>,
 }
 
-#[derive(Default)]
-pub struct Games {
-    pub focused: bool,
-    pub visible: bool,
+#[derive(Debug, EnumIter, EnumCount, Display)]
+pub enum Game {
+    Wordle,
+    Snake,
+    Tetris,
 }
+
+#[derive(Default)]
+pub struct Games {}
 
 #[derive(Default)]
 pub struct ClientState {
@@ -40,6 +60,8 @@ pub struct ClientState {
     pub counter: Counter,
     pub games: Games,
 
+    pub current_pane: MainPane,
+    pub focus: Focus,
     pub exiting: bool,
 }
 

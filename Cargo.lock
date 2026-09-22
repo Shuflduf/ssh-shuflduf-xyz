@@ -2674,6 +2674,8 @@ dependencies = [
  "rand 0.10.3",
  "ratatui",
  "russh",
+ "strum",
+ "strum_macros",
  "terminput",
  "terminput-crossterm",
  "tokio",

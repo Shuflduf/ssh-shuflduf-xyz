@@ -5,18 +5,20 @@ use ratatui::{
     layout::Rect,
     style::Stylize,
     text::{Line, Text},
-    widgets::{Paragraph, Widget},
+    widgets::{Paragraph, StatefulWidget, Widget},
 };
 
 use crate::{
     app::{TerminalPane, make_block},
-    types::{Counter, ServerMessage, ServerState},
+    types::{Counter, Focus, ServerMessage, ServerState},
 };
 
-impl Widget for &Counter {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+impl StatefulWidget for &Counter {
+    type State = Focus;
+    fn render(self, area: Rect, buf: &mut Buffer, focus: &mut Focus) {
         let instructions = Line::from(vec![" [Enter]".blue().bold(), " Increment ".into()]);
-        let block = make_block(self.focused, 2, "Counter").title_bottom(instructions.centered());
+        let block =
+            make_block(*focus == Focus::Pane, 2, "Counter").title_bottom(instructions.centered());
 
         let counter_text = Text::from(vec![Line::from(vec![
             "Value: ".into(),

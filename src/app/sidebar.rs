@@ -5,12 +5,12 @@ use ratatui::{
     layout::Rect,
     style::{Color, Style, Styled, Stylize},
     text::Line,
-    widgets::{Paragraph, Widget},
+    widgets::{Paragraph, StatefulWidget, Widget},
 };
 
 use crate::{
     app::{TerminalPane, make_block},
-    types::{ServerState, Sidebar},
+    types::{Focus, ServerState, Sidebar},
 };
 
 #[async_trait]
@@ -37,8 +37,9 @@ impl TerminalPane for Sidebar {
     }
 }
 
-impl Widget for &Sidebar {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+impl StatefulWidget for &Sidebar {
+    type State = Focus;
+    fn render(self, area: Rect, buf: &mut Buffer, focus: &mut Focus) {
         let items = ["One", "Two", "Three"];
         let lines = items
             .iter()
@@ -55,7 +56,7 @@ impl Widget for &Sidebar {
 
         Paragraph::new(lines)
             .block(
-                make_block(self.focused, 1, "Navigation").title_bottom(
+                make_block(*focus == Focus::Pane, 1, "Navigation").title_bottom(
                     Line::from(vec![" [Q]".blue().bold(), " Quit ".into()]).centered(),
                 ),
             )

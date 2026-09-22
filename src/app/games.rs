@@ -2,20 +2,32 @@ use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
     symbols::border,
-    widgets::{Block, Paragraph, Widget},
+    widgets::{Block, Paragraph, StatefulWidget, Widget},
+};
+use strum::{Display, EnumCount, EnumIter, IntoEnumIterator};
+
+use crate::{
+    app::make_block,
+    types::{Focus, Games},
 };
 
-use crate::{app::make_block, data::GAMES_LIST, types::Games};
+#[derive(Debug, EnumIter, EnumCount, Display)]
+pub enum GamesList {
+    Wordle,
+    Snake,
+    Tetris,
+}
 
-impl Widget for &Games {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        let list = Layout::vertical([Constraint::Length(10); GAMES_LIST.len()]).margin(2);
+impl StatefulWidget for &Games {
+    type State = Focus;
+    fn render(self, area: Rect, buf: &mut Buffer, focus: &mut Focus) {
+        let list = Layout::vertical([Constraint::Length(10); GamesList::COUNT]).margin(2);
         let areas = area.layout_vec(&list);
 
-        make_block(self.focused, 2, "Games").render(area, buf);
+        make_block(*focus == Focus::Pane, 2, "Games").render(area, buf);
 
-        for (i, &game) in GAMES_LIST.iter().enumerate() {
-            Paragraph::new(game)
+        for (i, game) in GamesList::iter().enumerate() {
+            Paragraph::new(game.to_string())
                 .block(Block::bordered().border_set(border::ROUNDED))
                 .render(areas[i], buf);
         }

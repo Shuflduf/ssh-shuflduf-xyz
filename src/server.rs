@@ -16,7 +16,7 @@ use tokio::sync::{
 };
 
 use crate::types::{
-    AppServer, ClientEvent, ClientMessage, ClientState, Counter, InputParser, ServerState,
+    AppServer, ClientEvent, ClientMessage, ClientState, Counter, Focus, InputParser, ServerState,
     SshTerminal, TerminalHandle,
 };
 
@@ -253,8 +253,8 @@ async fn handle_message(
             //     let _ = server_state.broadcast_sender.send(ServerMessage::Increment);
             //     *needs_redraw = true;
             // }
-            KeyCode::Char('1') => client_state.set_focus(1, needs_redraw),
-            KeyCode::Char('2') => client_state.set_focus(2, needs_redraw),
+            KeyCode::Char('1') => client_state.set_focus(Focus::Sidebar, needs_redraw),
+            KeyCode::Char('2') => client_state.set_focus(Focus::Pane, needs_redraw),
             // KeyCode::Up => {
             //     client_state.colour_index += 1;
             //     *needs_redraw = true;
