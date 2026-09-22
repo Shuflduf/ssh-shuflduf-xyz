@@ -7,10 +7,11 @@ use ratatui::{
     text::Line,
     widgets::{Paragraph, StatefulWidget, Widget},
 };
+use strum::{EnumCount, IntoEnumIterator, VariantArray};
 
 use crate::{
     app::{TerminalPane, make_block},
-    types::{Focus, ServerState, Sidebar},
+    types::{Focus, ServerState, Sidebar, SidebarItem},
 };
 
 #[async_trait]
@@ -23,13 +24,22 @@ impl TerminalPane for Sidebar {
     ) {
         match key_code {
             KeyCode::Up | KeyCode::Char('k') => {
-                self.selected_item += 2;
-                self.selected_item %= 3;
+                self.item = SidebarItem::VARIANTS[(SidebarItem::VARIANTS
+                    .iter()
+                    .position(|&item| item == self.item)
+                    .unwrap()
+                    + SidebarItem::COUNT
+                    - 1)
+                    % SidebarItem::COUNT];
                 *needs_redraw = true;
             }
             KeyCode::Down | KeyCode::Char('j') => {
-                self.selected_item += 1;
-                self.selected_item %= 3;
+                self.item = SidebarItem::VARIANTS[(SidebarItem::VARIANTS
+                    .iter()
+                    .position(|&item| item == self.item)
+                    .unwrap()
+                    + 1)
+                    % SidebarItem::COUNT];
                 *needs_redraw = true;
             }
             _ => {}
@@ -40,23 +50,20 @@ impl TerminalPane for Sidebar {
 impl StatefulWidget for &Sidebar {
     type State = Focus;
     fn render(self, area: Rect, buf: &mut Buffer, focus: &mut Focus) {
-        let items = ["One", "Two", "Three"];
-        let lines = items
-            .iter()
-            .enumerate()
-            .map(|(i, &text)| {
-                let text_col = if i == self.selected_item {
+        let lines = SidebarItem::iter()
+            .map(|item| {
+                let text_col = if item == self.item {
                     Color::White
                 } else {
                     Color::DarkGray
                 };
-                Line::from(text).set_style(Style::new().fg(text_col))
+                Line::from(item.to_string()).set_style(Style::new().fg(text_col))
             })
             .collect::<Vec<Line>>();
 
         Paragraph::new(lines)
             .block(
-                make_block(*focus == Focus::Pane, 1, "Navigation").title_bottom(
+                make_block(*focus == Focus::Sidebar, 1, "Navigation").title_bottom(
                     Line::from(vec![" [Q]".blue().bold(), " Quit ".into()]).centered(),
                 ),
             )

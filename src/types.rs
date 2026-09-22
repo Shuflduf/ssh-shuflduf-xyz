@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use crossterm::event::KeyCode;
 use ratatui::{Terminal, backend::CrosstermBackend, layout::Rect};
-use strum::{Display, EnumCount, EnumIter};
+use strum::{Display, EnumCount, EnumIter, FromRepr, VariantArray};
 use tokio::{
     sync::{Mutex, broadcast, mpsc::UnboundedSender},
     time::Instant,
@@ -26,7 +26,9 @@ pub enum Focus {
     Pane,
 }
 
-#[derive(Default, Debug, EnumIter, EnumCount, Display)]
+#[derive(
+    Default, Debug, EnumIter, EnumCount, Display, VariantArray, PartialEq, Eq, Clone, Copy,
+)]
 pub enum SidebarItem {
     #[default]
     Counter,
