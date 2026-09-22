@@ -20,6 +20,7 @@ pub trait TerminalPane: Send {
     async fn handle_key(
         &mut self,
         key_code: KeyCode,
+        current_pane: &mut MainPane,
         server_state: &ServerState,
         needs_redraw: &mut bool,
     );
@@ -62,18 +63,18 @@ impl ClientState {
         match self.focus {
             Focus::Sidebar => {
                 self.sidebar
-                    .handle_key(key_code, server_state, needs_redraw)
+                    .handle_key(key_code, &mut self.current_pane, server_state, needs_redraw)
                     .await;
             }
             Focus::Pane => match self.current_pane {
                 MainPane::Counter => {
                     self.counter
-                        .handle_key(key_code, server_state, needs_redraw)
+                        .handle_key(key_code, &mut self.current_pane, server_state, needs_redraw)
                         .await;
                 }
                 MainPane::Games => {
                     self.counter
-                        .handle_key(key_code, server_state, needs_redraw)
+                        .handle_key(key_code, &mut self.current_pane, server_state, needs_redraw)
                         .await;
                 }
             },

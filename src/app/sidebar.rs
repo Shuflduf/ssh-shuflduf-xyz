@@ -11,7 +11,7 @@ use strum::{EnumCount, IntoEnumIterator, VariantArray};
 
 use crate::{
     app::{TerminalPane, make_block},
-    types::{Focus, ServerState, Sidebar, SidebarItem},
+    types::{Focus, MainPane, ServerState, Sidebar, SidebarItem},
 };
 
 #[async_trait]
@@ -19,6 +19,7 @@ impl TerminalPane for Sidebar {
     async fn handle_key(
         &mut self,
         key_code: KeyCode,
+        current_pane: &mut MainPane,
         _server_state: &ServerState,
         needs_redraw: &mut bool,
     ) {
@@ -40,6 +41,13 @@ impl TerminalPane for Sidebar {
                     .unwrap()
                     + 1)
                     % SidebarItem::COUNT];
+                *needs_redraw = true;
+            }
+            KeyCode::Enter => {
+                *current_pane = match self.item {
+                    SidebarItem::Counter => MainPane::Counter,
+                    SidebarItem::Games => MainPane::Games,
+                };
                 *needs_redraw = true;
             }
             _ => {}

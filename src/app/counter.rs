@@ -10,7 +10,7 @@ use ratatui::{
 
 use crate::{
     app::{TerminalPane, make_block},
-    types::{Counter, Focus, ServerMessage, ServerState},
+    types::{Counter, Focus, MainPane, ServerMessage, ServerState},
 };
 
 impl StatefulWidget for &Counter {
@@ -37,6 +37,7 @@ impl TerminalPane for Counter {
     async fn handle_key(
         &mut self,
         key_code: KeyCode,
+        _current_pane: &mut MainPane,
         server_state: &ServerState,
         needs_redraw: &mut bool,
     ) {
