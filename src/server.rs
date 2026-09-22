@@ -7,7 +7,7 @@ use ratatui::{
     Terminal, TerminalOptions, Viewport, backend::CrosstermBackend, layout::Rect, widgets::Clear,
 };
 use russh::{
-    Channel, ChannelId, Pty,
+    Channel, ChannelId, ChannelWriteHalf, Pty,
     keys::PublicKey,
     server::{Auth, ChannelOpenHandle, Config, Handler, Msg, Server, Session},
 };
@@ -60,6 +60,8 @@ impl Handler for AppServer {
         reply: ChannelOpenHandle,
         session: &mut Session,
     ) -> Result<(), Self::Error> {
+        let (channel_read, channel) = channel.split();
+        drop(channel_read);
         let terminal_handle = TerminalHandle::start(session.handle(), channel.id()).await;
         let terminal = Terminal::with_options(
             CrosstermBackend::new(terminal_handle),
@@ -168,7 +170,7 @@ async fn client_event_loop(
     client_id: usize,
     clients: Arc<Mutex<HashMap<usize, UnboundedSender<ClientEvent>>>>,
     server_state: ServerState,
-    client_channel: Channel<Msg>,
+    client_channel: ChannelWriteHalf<Msg>,
     mut terminal: SshTerminal,
     mut app: AppState,
     mut client_event_receiver: UnboundedReceiver<ClientEvent>,
