@@ -2,7 +2,12 @@ use std::{collections::HashMap, sync::Arc};
 
 use crossterm::event::KeyCode;
 use ratatui::{Terminal, backend::CrosstermBackend, layout::Rect};
-use tokio::sync::{Mutex, broadcast, mpsc::UnboundedSender};
+use tokio::{
+    sync::{Mutex, broadcast, mpsc::UnboundedSender},
+    time::Instant,
+};
+
+use crate::app::TerminalPane;
 
 pub type SshTerminal = Terminal<CrosstermBackend<TerminalHandle>>;
 
@@ -10,20 +15,30 @@ pub type SshTerminal = Terminal<CrosstermBackend<TerminalHandle>>;
 
 #[derive(Default)]
 pub struct Sidebar {
-    pub selected_item: usize,
     pub focused: bool,
+    pub visible: bool,
+    pub selected_item: usize,
 }
 
 #[derive(Default)]
 pub struct Counter {
-    pub count: u32,
     pub focused: bool,
+    pub visible: bool,
+    pub count: u32,
+    pub last_increment_time: Option<Instant>,
+}
+
+#[derive(Default)]
+pub struct Games {
+    pub focused: bool,
+    pub visible: bool,
 }
 
 #[derive(Default)]
 pub struct ClientState {
     pub sidebar: Sidebar,
     pub counter: Counter,
+    pub games: Games,
 
     pub exiting: bool,
 }

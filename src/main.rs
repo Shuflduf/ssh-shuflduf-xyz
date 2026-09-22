@@ -1,6 +1,7 @@
 use crate::types::AppServer;
 
 mod app;
+mod data;
 mod input;
 mod server;
 mod ssh;

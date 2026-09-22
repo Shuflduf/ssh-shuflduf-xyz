@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use color_eyre::eyre::Result;
 use crossterm::event::KeyCode;
@@ -289,7 +288,6 @@ impl ServerState {
         ClientState {
             counter: Counter {
                 count: *self.current_value.lock().await,
-                focused: true,
                 ..Default::default()
             },
             ..Default::default()

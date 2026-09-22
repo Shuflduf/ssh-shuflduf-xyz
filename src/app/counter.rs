@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use crossterm::event::KeyCode;
 use ratatui::{
     buffer::Buffer,
@@ -8,7 +9,7 @@ use ratatui::{
 };
 
 use crate::{
-    app::{SSHWidget, make_block},
+    app::{TerminalPane, make_block},
     types::{Counter, ServerMessage, ServerState},
 };
 
@@ -29,7 +30,8 @@ impl Widget for &Counter {
     }
 }
 
-impl SSHWidget for Counter {
+#[async_trait]
+impl TerminalPane for Counter {
     async fn handle_key(
         &mut self,
         key_code: KeyCode,

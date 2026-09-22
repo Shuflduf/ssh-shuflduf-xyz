@@ -1,3 +1,6 @@
+use std::{any::Any, sync::Arc};
+
+use async_trait::async_trait;
 use crossterm::event::KeyCode;
 use ratatui::{
     Frame,
@@ -11,9 +14,11 @@ use ratatui::{
 use crate::types::{ClientState, ServerMessage, ServerState};
 
 mod counter;
+mod games;
 mod sidebar;
 
-pub trait SSHWidget {
+#[async_trait]
+pub trait TerminalPane: Send {
     async fn handle_key(
         &mut self,
         key_code: KeyCode,
@@ -28,12 +33,14 @@ impl ClientState {
             ServerMessage::Increment => self.counter.count += 1,
         }
     }
+
     pub fn draw(&self, frame: &mut Frame) {
         let layout =
             Layout::horizontal([Constraint::Max(30), Constraint::Fill(1)]).split(frame.area());
 
         frame.render_widget(&self.sidebar, layout[0]);
-        frame.render_widget(&self.counter, layout[1]);
+        frame.render_widget(&self.games, layout[1]);
+        // frame.render_widget(&self.counter, layout[1]);
     }
 
     pub fn set_focus(&mut self, index: u8, needs_redraw: &mut bool) {
