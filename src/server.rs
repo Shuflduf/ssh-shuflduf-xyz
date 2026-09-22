@@ -1,50 +1,28 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
-
 use color_eyre::eyre::Result;
-use ratatui::{Terminal, TerminalOptions, Viewport, backend::CrosstermBackend, layout::Rect};
+use crossterm::event::KeyCode;
+use ratatui::{
+    Terminal, TerminalOptions, Viewport, backend::CrosstermBackend, layout::Rect, widgets::Clear,
+};
 use russh::{
     Channel, ChannelId, Pty,
     keys::PublicKey,
     server::{Auth, ChannelOpenHandle, Config, Handler, Msg, Server, Session},
 };
+use tokio::sync::{
+    Mutex,
+    mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel},
+};
 
-use crate::types::{AppServer, AppState, TerminalHandle};
+use crate::types::{
+    AppServer, AppState, ClientEvent, InputParser, ServerEvent, ServerState, SshTerminal,
+    TerminalHandle,
+};
 
 impl AppServer {
     pub async fn run(&mut self) -> Result<()> {
-        let _clients = self.clients.clone();
-
-        tokio::spawn(async move {
-
-            // loop {
-            //     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-
-            //     for (_, (terminal, app)) in clients.lock().await.iter_mut() {
-            //         app.counter += 1;
-
-            //         terminal
-            //             .draw(|f| {
-            //                 let area = f.area();
-            //                 f.render_widget(Clear, area);
-            //                 let style = match app.counter % 3 {
-            //                     0 => Style::default().fg(Color::Red),
-            //                     1 => Style::default().fg(Color::Green),
-            //                     _ => Style::default().fg(Color::Blue),
-            //                 };
-            //                 let paragraph = Paragraph::new(format!("Counter: {}", app.counter))
-            //                     .alignment(ratatui::layout::Alignment::Center)
-            //                     .style(style);
-            //                 let block = Block::default()
-            //                     .title("Press 'c' to reset the counter!")
-            //                     .borders(Borders::ALL);
-            //                 f.render_widget(paragraph.block(block), area);
-            //             })
-            //             .unwrap();
-            //     }
-            // }
-        });
-
         let config = Config {
             inactivity_timeout: Some(std::time::Duration::from_secs(3600)),
             auth_rejection_time: std::time::Duration::from_secs(3),
@@ -65,15 +43,17 @@ impl AppServer {
 
 impl Server for AppServer {
     type Handler = Self;
-    fn new_client(&mut self, _: Option<std::net::SocketAddr>) -> Self {
-        let s = self.clone();
-        self.id += 1;
-        s
+
+    fn new_client(&mut self, _peer_address: Option<std::net::SocketAddr>) -> Self {
+        let per_connection_handler = self.clone();
+        self.client_id += 1;
+        per_connection_handler
     }
 }
 
 impl Handler for AppServer {
     type Error = color_eyre::eyre::Error;
+
     async fn channel_open_session(
         &mut self,
         channel: Channel<Msg>,
@@ -81,112 +61,196 @@ impl Handler for AppServer {
         session: &mut Session,
     ) -> Result<(), Self::Error> {
         let terminal_handle = TerminalHandle::start(session.handle(), channel.id()).await;
+        let terminal = Terminal::with_options(
+            CrosstermBackend::new(terminal_handle),
+            TerminalOptions {
+                viewport: Viewport::Fixed(Rect::default()),
+            },
+        )?;
 
-        let backend = CrosstermBackend::new(terminal_handle);
+        let (client_event_sender, client_event_receiver) = unbounded_channel();
+        tokio::spawn(client_event_loop(
+            self.client_id,
+            self.clients.clone(),
+            self.server_state.clone(),
+            channel,
+            terminal,
+            AppState::default(),
+            client_event_receiver,
+        ));
 
-        // the correct viewport area will be set when the client request a pty
-        let options = TerminalOptions {
-            viewport: Viewport::Fixed(Rect::default()),
-        };
-
-        let terminal = Terminal::with_options(backend, options)?;
-        let app = AppState::default();
-
-        let mut clients = self.clients.lock().await;
-        clients.insert(self.id, (terminal, app));
+        self.clients
+            .lock()
+            .await
+            .insert(self.client_id, client_event_sender);
 
         reply.accept().await;
         Ok(())
     }
 
-    async fn auth_publickey(&mut self, _: &str, _: &PublicKey) -> Result<Auth, Self::Error> {
+    async fn auth_publickey(
+        &mut self,
+        _username: &str,
+        _public_key: &PublicKey,
+    ) -> Result<Auth, Self::Error> {
         Ok(Auth::Accept)
     }
 
-    async fn data(&mut self, channel: ChannelId, data: &[u8], session: &mut Session) -> Result<()> {
-        match data {
-            // Pressing 'q' closes the connection.
-            b"q" => {
-                self.clients.lock().await.remove(&self.id);
-                session.close(channel)?;
-            }
-            // Pressing 'c' resets the counter for the app.
-            // Only the client with the id sees the counter reset.
-            b"c" => {
-                let mut clients = self.clients.lock().await;
-                let (_, app) = clients.get_mut(&self.id).unwrap();
-                app.counter = 0;
-            }
-            _ => {}
-        }
+    async fn auth_none(&mut self, _username: &str) -> Result<Auth, Self::Error> {
+        Ok(Auth::Accept)
+    }
 
+    async fn data(
+        &mut self,
+        _channel: ChannelId,
+        incoming_bytes: &[u8],
+        _session: &mut Session,
+    ) -> Result<(), Self::Error> {
+        if let Some(client_sender) = self.clients.lock().await.get(&self.client_id) {
+            let _ = client_sender.send(ClientEvent::Input(incoming_bytes.to_vec()));
+        }
         Ok(())
     }
 
-    /// The client's window size has changed.
     async fn window_change_request(
         &mut self,
-        _: ChannelId,
-        col_width: u32,
-        row_height: u32,
-        _: u32,
-        _: u32,
-        _: &mut Session,
+        _channel: ChannelId,
+        column_count: u32,
+        row_count: u32,
+        _pixel_width: u32,
+        _pixel_height: u32,
+        _session: &mut Session,
     ) -> Result<(), Self::Error> {
-        let rect = Rect {
+        let new_size_rect = Rect {
             x: 0,
             y: 0,
-            width: col_width as u16,
-            height: row_height as u16,
+            width: column_count as u16,
+            height: row_count as u16,
         };
-
-        let mut clients = self.clients.lock().await;
-        let (terminal, _) = clients.get_mut(&self.id).unwrap();
-        terminal.resize(rect)?;
-
+        self.notify_client_of_resize(new_size_rect).await;
         Ok(())
     }
 
-    /// The client requests a pseudo-terminal with the given
-    /// specifications.
-    ///
-    /// **Note:** Success or failure should be communicated to the client by calling
-    /// `session.channel_success(channel)` or `session.channel_failure(channel)` respectively.
     async fn pty_request(
         &mut self,
         channel: ChannelId,
-        _: &str,
-        col_width: u32,
-        row_height: u32,
-        _: u32,
-        _: u32,
-        _: &[(Pty, u32)],
+        _term: &str,
+        column_count: u32,
+        row_count: u32,
+        _pixel_width: u32,
+        _pixel_height: u32,
+        _modes: &[(Pty, u32)],
         session: &mut Session,
-    ) -> Result<()> {
-        let rect = Rect {
+    ) -> Result<(), Self::Error> {
+        let new_size_rect = Rect {
             x: 0,
             y: 0,
-            width: col_width as u16,
-            height: row_height as u16,
+            width: column_count as u16,
+            height: row_count as u16,
         };
-
-        let mut clients = self.clients.lock().await;
-        let (terminal, _) = clients.get_mut(&self.id).unwrap();
-        terminal.resize(rect)?;
+        self.notify_client_of_resize(new_size_rect).await;
 
         session.channel_success(channel)?;
-
         Ok(())
+    }
+}
+
+impl AppServer {
+    async fn notify_client_of_resize(&self, new_size_rect: Rect) {
+        if let Some(client_sender) = self.clients.lock().await.get(&self.client_id) {
+            let _ = client_sender.send(ClientEvent::Resize(new_size_rect));
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn client_event_loop(
+    client_id: usize,
+    clients: Arc<Mutex<HashMap<usize, UnboundedSender<ClientEvent>>>>,
+    server_state: ServerState,
+    client_channel: Channel<Msg>,
+    mut terminal: SshTerminal,
+    mut app: AppState,
+    mut client_event_receiver: UnboundedReceiver<ClientEvent>,
+) {
+    let mut input_parser = InputParser::default();
+    let mut server_event_receiver = server_state.broadcast_sender.subscribe();
+    let (mut needs_redraw, mut clear_screen) = (true, true);
+
+    loop {
+        tokio::select! {
+            client_event = client_event_receiver.recv() => match client_event {
+                Some(ClientEvent::Input(incoming_bytes)) => {
+                    for key_event in input_parser.feed(&incoming_bytes) {
+                        handle_key_press(&mut app, &server_state, &mut needs_redraw, key_event.code).await;
+                    }
+                }
+                Some(ClientEvent::Resize(new_size_rect)) => {
+                    let _ = terminal.resize(new_size_rect);
+                    needs_redraw = true;
+                    clear_screen = true;
+                }
+                None => break,
+            },
+            _server_event = server_event_receiver.recv() => {
+                needs_redraw = true;
+            }
+        }
+
+        if app.should_exit {
+            let _ = client_channel.close().await;
+            break;
+        }
+
+        if needs_redraw {
+            app.counter = *server_state.current_value.lock().await;
+
+            let clear_this_frame = clear_screen;
+            clear_screen = false;
+            let _ = terminal.draw(|frame| {
+                if clear_this_frame {
+                    frame.render_widget(Clear, frame.area());
+                }
+                app.draw(frame);
+            });
+            needs_redraw = false;
+        }
+    }
+
+    clients.lock().await.remove(&client_id);
+}
+
+async fn handle_key_press(
+    app: &mut AppState,
+    server_state: &ServerState,
+    needs_redraw: &mut bool,
+    key_code: KeyCode,
+) {
+    match key_code {
+        KeyCode::Char('q') => app.should_exit = true,
+        KeyCode::Left => {
+            let mut counter = server_state.current_value.lock().await;
+            if *counter > 0 {
+                *counter -= 1;
+            }
+            let _ = server_state.broadcast_sender.send(ServerEvent::Decrement);
+            *needs_redraw = true;
+        }
+        KeyCode::Right => {
+            *server_state.current_value.lock().await += 1;
+            let _ = server_state.broadcast_sender.send(ServerEvent::Increment);
+            *needs_redraw = true;
+        }
+        _ => {}
     }
 }
 
 impl Drop for AppServer {
     fn drop(&mut self) {
-        let id = self.id;
+        let disconnected_client_id = self.client_id;
         let clients = self.clients.clone();
         tokio::spawn(async move {
-            let mut clients = clients.lock().await;
-            clients.remove(&id);
+            clients.lock().await.remove(&disconnected_client_id);
         });
     }
 }

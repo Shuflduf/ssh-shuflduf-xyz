@@ -4,39 +4,32 @@ use tokio::sync::mpsc::unbounded_channel;
 use crate::types::TerminalHandle;
 
 impl TerminalHandle {
-    pub async fn start(handle: Handle, channel_id: ChannelId) -> Self {
-        let (sender, mut receiver) = unbounded_channel::<Vec<u8>>();
+    pub async fn start(connection_handle: Handle, channel_id: ChannelId) -> Self {
+        let (terminal_bytes_sender, mut bytes_receiver) = unbounded_channel::<Vec<u8>>();
         tokio::spawn(async move {
-            while let Some(data) = receiver.recv().await {
-                let result = handle.data(channel_id, data).await;
-                if result.is_err() {
-                    eprintln!("Failed to send data: {result:?}");
+            while let Some(bytes) = bytes_receiver.recv().await {
+                if let Err(error) = connection_handle.data(channel_id, bytes).await {
+                    eprintln!("Failed to send terminal output to client: {error:?}");
                 }
             }
         });
         Self {
-            sender,
-            sink: Vec::new(),
+            terminal_bytes_sender,
+            pending_bytes: Vec::new(),
         }
     }
 }
 
 impl std::io::Write for TerminalHandle {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        self.sink.extend_from_slice(buf);
-        Ok(buf.len())
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        self.pending_bytes.extend_from_slice(bytes);
+        Ok(bytes.len())
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
-        let result = self.sender.send(self.sink.clone());
-        if result.is_err() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::BrokenPipe,
-                result.unwrap_err(),
-            ));
-        }
-
-        self.sink.clear();
-        Ok(())
+        let bytes = std::mem::take(&mut self.pending_bytes);
+        self.terminal_bytes_sender
+            .send(bytes)
+            .map_err(|_| std::io::Error::new(std::io::ErrorKind::BrokenPipe, "client disconnected"))
     }
 }

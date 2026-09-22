@@ -9,4 +9,6 @@ crossterm = "0.29.0"
 rand = "0.10.3"
 ratatui = "0.30.2"
 russh = "0.63.3"
+terminput = "0.5.15"
+terminput-crossterm = { version = "0.4.11", features = ["crossterm_0_29"] }
 tokio = "1.53.1"
