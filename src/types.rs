@@ -8,8 +8,9 @@ pub type SshTerminal = Terminal<CrosstermBackend<TerminalHandle>>;
 
 #[derive(Default)]
 pub struct ClientState {
-    pub counter: i32,
-    pub should_exit: bool,
+    pub counter: u32,
+    pub colour_index: u8,
+    pub exiting: bool,
 }
 
 pub enum ClientEvent {
@@ -30,7 +31,7 @@ pub enum ServerMessage {
 
 #[derive(Clone)]
 pub struct ServerState {
-    pub current_value: Arc<Mutex<i32>>,
+    pub current_value: Arc<Mutex<u32>>,
     pub broadcast_sender: broadcast::Sender<ServerMessage>,
 }
 

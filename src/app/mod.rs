@@ -2,7 +2,7 @@ use ratatui::{
     Frame,
     buffer::Buffer,
     layout::Rect,
-    style::Stylize,
+    style::{Color, Style, Stylize},
     symbols::border,
     text::{Line, Text},
     widgets::{Block, Paragraph, Widget},
@@ -32,9 +32,12 @@ impl Widget for &ClientState {
             " Quit ".into(),
             "<Q> ".blue().bold(),
         ]);
+        let colours = [Color::Black, Color::Red, Color::Green, Color::Blue];
+        let border_col = colours[self.colour_index as usize % colours.len()];
         let block = Block::bordered()
             .title(title.centered())
             .title_bottom(instructions.centered())
+            .border_style(Style::new().bg(border_col))
             .border_set(border::THICK);
 
         let counter_text = Text::from(vec![Line::from(vec![

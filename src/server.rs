@@ -212,7 +212,7 @@ async fn client_event_loop(
             },
         }
 
-        if client_state.should_exit {
+        if client_state.exiting {
             let _ = client_channel.close().await;
             break;
         }
@@ -246,7 +246,7 @@ fn handle_event(client_event: ClientEvent, input_parser: &mut InputParser) -> Ve
 
 async fn handle_message(
     message: ClientMessage,
-    app: &mut ClientState,
+    client_state: &mut ClientState,
     server_state: &ServerState,
     needs_redraw: &mut bool,
     terminal: &mut SshTerminal,
@@ -254,10 +254,14 @@ async fn handle_message(
 ) {
     match message {
         ClientMessage::KeyPressed(key_code) => match key_code {
-            KeyCode::Char('q') => app.should_exit = true,
+            KeyCode::Char('q') => client_state.exiting = true,
             KeyCode::Right => {
                 *server_state.current_value.lock().await += 1;
                 let _ = server_state.broadcast_sender.send(ServerMessage::Increment);
+                *needs_redraw = true;
+            }
+            KeyCode::Up => {
+                client_state.colour_index += 1;
                 *needs_redraw = true;
             }
             _ => {}
@@ -284,7 +288,7 @@ impl ServerState {
     async fn client_state(&self) -> ClientState {
         ClientState {
             counter: *self.current_value.lock().await,
-            should_exit: false,
+            ..Default::default()
         }
     }
 }
