@@ -1,0 +1,45 @@
+use crossterm::event::KeyCode;
+use ratatui::{
+    buffer::Buffer,
+    layout::Rect,
+    style::Stylize,
+    text::{Line, Text},
+    widgets::{Paragraph, Widget},
+};
+
+use crate::{
+    app::{SSHWidget, make_block},
+    types::{Counter, ServerMessage, ServerState},
+};
+
+impl Widget for &Counter {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let instructions = Line::from(vec![" [Enter]".blue().bold(), " Increment ".into()]);
+        let block = make_block(self.focused, 2, "Counter").title_bottom(instructions.centered());
+
+        let counter_text = Text::from(vec![Line::from(vec![
+            "Value: ".into(),
+            self.count.to_string().yellow(),
+        ])]);
+
+        Paragraph::new(counter_text)
+            .centered()
+            .block(block)
+            .render(area, buf);
+    }
+}
+
+impl SSHWidget for Counter {
+    async fn handle_key(
+        &mut self,
+        key_code: KeyCode,
+        server_state: &ServerState,
+        needs_redraw: &mut bool,
+    ) {
+        if key_code == KeyCode::Enter {
+            *server_state.current_value.lock().await += 1;
+            let _ = server_state.broadcast_sender.send(ServerMessage::Increment);
+            *needs_redraw = true;
+        }
+    }
+}

@@ -1,53 +1,85 @@
+use crossterm::event::KeyCode;
 use ratatui::{
     Frame,
-    buffer::Buffer,
-    layout::Rect,
+    layout::{Constraint, Layout},
     style::{Color, Style, Stylize},
     symbols::border,
-    text::{Line, Text},
-    widgets::{Block, Paragraph, Widget},
+    text::Line,
+    widgets::Block,
 };
 
-use crate::types::{ClientState, ServerMessage};
+use crate::types::{ClientState, ServerMessage, ServerState};
+
+mod counter;
+mod sidebar;
+
+pub trait SSHWidget {
+    async fn handle_key(
+        &mut self,
+        key_code: KeyCode,
+        server_state: &ServerState,
+        needs_redraw: &mut bool,
+    );
+}
 
 impl ClientState {
     pub fn apply_command(&mut self, command: &ServerMessage) {
         match command {
-            ServerMessage::Increment => self.counter += 1,
+            ServerMessage::Increment => self.counter.count += 1,
         }
     }
     pub fn draw(&self, frame: &mut Frame) {
-        frame.render_widget(self, frame.area());
+        let layout =
+            Layout::horizontal([Constraint::Max(30), Constraint::Fill(1)]).split(frame.area());
+
+        frame.render_widget(&self.sidebar, layout[0]);
+        frame.render_widget(&self.counter, layout[1]);
+    }
+
+    pub fn set_focus(&mut self, index: u8, needs_redraw: &mut bool) {
+        self.sidebar.focused = false;
+        self.counter.focused = false;
+        match index {
+            1 => self.sidebar.focused = true,
+            2 => self.counter.focused = true,
+            _ => unreachable!(),
+        }
+        *needs_redraw = true;
+    }
+
+    pub async fn handle_key(
+        &mut self,
+        key_code: KeyCode,
+        server_state: &ServerState,
+        needs_redraw: &mut bool,
+    ) {
+        if self.sidebar.focused {
+            self.sidebar
+                .handle_key(key_code, server_state, needs_redraw)
+                .await;
+        }
+        if self.counter.focused {
+            self.counter
+                .handle_key(key_code, server_state, needs_redraw)
+                .await;
+        }
     }
 }
 
-impl Widget for &ClientState {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        let title = Line::from(" ssh.shuflduf.xyz ".bold());
-        let instructions = Line::from(vec![
-            " Decrement ".into(),
-            "<Left>".blue().bold(),
-            " Increment ".into(),
-            "<Right>".blue().bold(),
-            " Quit ".into(),
-            "<Q> ".blue().bold(),
-        ]);
-        let colours = [Color::Black, Color::Red, Color::Green, Color::Blue];
-        let border_col = colours[self.colour_index as usize % colours.len()];
-        let block = Block::bordered()
-            .title(title.centered())
-            .title_bottom(instructions.centered())
-            .border_style(Style::new().bg(border_col))
-            .border_set(border::THICK);
-
-        let counter_text = Text::from(vec![Line::from(vec![
-            "Value: ".into(),
-            self.counter.to_string().yellow(),
-        ])]);
-
-        Paragraph::new(counter_text)
-            .centered()
-            .block(block)
-            .render(area, buf);
-    }
+fn make_block(focused: bool, index: u8, title: &str) -> Block<'_> {
+    let border_col = if focused {
+        Color::White
+    } else {
+        Color::DarkGray
+    };
+    Block::bordered()
+        .title(
+            Line::from(vec![
+                format!(" [{index}]").blue().bold(),
+                format!(" {title} ").into(),
+            ])
+            .centered(),
+        )
+        .border_style(Style::new().fg(border_col))
+        .border_set(border::ROUNDED)
 }

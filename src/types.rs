@@ -6,23 +6,29 @@ use tokio::sync::{Mutex, broadcast, mpsc::UnboundedSender};
 
 pub type SshTerminal = Terminal<CrosstermBackend<TerminalHandle>>;
 
+// client stuff
+
+#[derive(Default)]
+pub struct Sidebar {
+    pub selected_item: usize,
+    pub focused: bool,
+}
+
+#[derive(Default)]
+pub struct Counter {
+    pub count: u32,
+    pub focused: bool,
+}
+
 #[derive(Default)]
 pub struct ClientState {
-    pub counter: u32,
-    pub colour_index: u8,
+    pub sidebar: Sidebar,
+    pub counter: Counter,
+
     pub exiting: bool,
 }
 
-pub enum ClientEvent {
-    Input(Vec<u8>),
-    Resize(Rect),
-}
-
-#[derive(Clone)]
-pub enum ClientMessage {
-    KeyPressed(KeyCode),
-    TerminalResized(Rect),
-}
+// server stuff
 
 #[derive(Clone)]
 pub enum ServerMessage {
@@ -43,6 +49,17 @@ impl Default for ServerState {
             broadcast_sender,
         }
     }
+}
+
+pub enum ClientEvent {
+    Input(Vec<u8>),
+    Resize(Rect),
+}
+
+#[derive(Clone)]
+pub enum ClientMessage {
+    KeyPressed(KeyCode),
+    TerminalResized(Rect),
 }
 
 pub struct TerminalHandle {

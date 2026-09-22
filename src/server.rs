@@ -17,14 +17,14 @@ use tokio::sync::{
 };
 
 use crate::types::{
-    AppServer, ClientEvent, ClientMessage, ClientState, InputParser, ServerMessage, ServerState,
+    AppServer, ClientEvent, ClientMessage, ClientState, Counter, InputParser, ServerState,
     SshTerminal, TerminalHandle,
 };
 
 impl AppServer {
     pub async fn run(&mut self) -> Result<()> {
         let config = Config {
-            inactivity_timeout: Some(std::time::Duration::from_secs(3600)),
+            inactivity_timeout: Some(std::time::Duration::from_mins(1)),
             auth_rejection_time: std::time::Duration::from_secs(3),
             auth_rejection_time_initial: Some(std::time::Duration::from_secs(0)),
             keys: vec![
@@ -197,18 +197,12 @@ async fn client_event_loop(
                 }
                 None => break,
             },
-            server_command = server_command_receiver.recv() => match server_command {
-                Ok(command) => {
-                    let previous_counter = client_state.counter;
-                    client_state.apply_command(&command);
-                    if client_state.counter != previous_counter {
-                        needs_redraw = true;
-                    }
-                }
-                Err(_) => {
-                    client_state.counter = *server_state.current_value.lock().await;
-                    needs_redraw = true;
-                }
+            server_command = server_command_receiver.recv() => if let Ok(command) = server_command {
+                client_state.apply_command(&command);
+                needs_redraw = true;
+            } else {
+                client_state = server_state.client_state().await;
+                needs_redraw = true;
             },
         }
 
@@ -255,16 +249,22 @@ async fn handle_message(
     match message {
         ClientMessage::KeyPressed(key_code) => match key_code {
             KeyCode::Char('q') => client_state.exiting = true,
-            KeyCode::Right => {
-                *server_state.current_value.lock().await += 1;
-                let _ = server_state.broadcast_sender.send(ServerMessage::Increment);
-                *needs_redraw = true;
+            // KeyCode::Right => {
+            //     *server_state.current_value.lock().await += 1;
+            //     let _ = server_state.broadcast_sender.send(ServerMessage::Increment);
+            //     *needs_redraw = true;
+            // }
+            KeyCode::Char('1') => client_state.set_focus(1, needs_redraw),
+            KeyCode::Char('2') => client_state.set_focus(2, needs_redraw),
+            // KeyCode::Up => {
+            //     client_state.colour_index += 1;
+            //     *needs_redraw = true;
+            // }
+            _ => {
+                client_state
+                    .handle_key(key_code, server_state, needs_redraw)
+                    .await;
             }
-            KeyCode::Up => {
-                client_state.colour_index += 1;
-                *needs_redraw = true;
-            }
-            _ => {}
         },
         ClientMessage::TerminalResized(new_size_rect) => {
             let _ = terminal.resize(new_size_rect);
@@ -287,7 +287,11 @@ impl Drop for AppServer {
 impl ServerState {
     async fn client_state(&self) -> ClientState {
         ClientState {
-            counter: *self.current_value.lock().await,
+            counter: Counter {
+                count: *self.current_value.lock().await,
+                focused: true,
+                ..Default::default()
+            },
             ..Default::default()
         }
     }
