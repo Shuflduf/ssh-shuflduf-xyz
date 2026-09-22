@@ -7,7 +7,7 @@ use tokio::sync::{Mutex, broadcast, mpsc::UnboundedSender};
 pub type SshTerminal = Terminal<CrosstermBackend<TerminalHandle>>;
 
 #[derive(Default)]
-pub struct AppState {
+pub struct ClientState {
     pub counter: i32,
     pub should_exit: bool,
 }
@@ -18,20 +18,20 @@ pub enum ClientEvent {
 }
 
 #[derive(Clone)]
-pub enum Message {
+pub enum ClientMessage {
     KeyPressed(KeyCode),
     TerminalResized(Rect),
 }
 
 #[derive(Clone)]
-pub enum Command {
-    CounterChanged { value: i32 },
+pub enum ServerMessage {
+    Increment,
 }
 
 #[derive(Clone)]
 pub struct ServerState {
     pub current_value: Arc<Mutex<i32>>,
-    pub broadcast_sender: broadcast::Sender<Command>,
+    pub broadcast_sender: broadcast::Sender<ServerMessage>,
 }
 
 impl Default for ServerState {

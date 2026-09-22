@@ -8,12 +8,12 @@ use ratatui::{
     widgets::{Block, Paragraph, Widget},
 };
 
-use crate::types::{AppState, Command};
+use crate::types::{ClientState, ServerMessage};
 
-impl AppState {
-    pub fn apply_command(&mut self, command: &Command) {
+impl ClientState {
+    pub fn apply_command(&mut self, command: &ServerMessage) {
         match command {
-            Command::CounterChanged { value } => self.counter = *value,
+            ServerMessage::Increment => self.counter += 1,
         }
     }
     pub fn draw(&self, frame: &mut Frame) {
@@ -21,9 +21,9 @@ impl AppState {
     }
 }
 
-impl Widget for &AppState {
+impl Widget for &ClientState {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let title = Line::from(" Counter App Tutorial ".bold());
+        let title = Line::from(" ssh.shuflduf.xyz ".bold());
         let instructions = Line::from(vec![
             " Decrement ".into(),
             "<Left>".blue().bold(),
