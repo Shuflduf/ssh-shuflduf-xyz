@@ -4,7 +4,7 @@ use ratatui::{
     symbols::border,
     widgets::{Block, Paragraph, StatefulWidget, Widget},
 };
-use strum::{Display, EnumCount, EnumIter, IntoEnumIterator};
+use strum::{EnumCount, IntoEnumIterator};
 
 use crate::{
     app::make_block,

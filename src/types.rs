@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use crossterm::event::KeyCode;
 use ratatui::{Terminal, backend::CrosstermBackend, layout::Rect};
-use strum::{Display, EnumCount, EnumIter, FromRepr, VariantArray};
+use strum::{Display, EnumCount, EnumIter, VariantArray};
 use tokio::{
     sync::{Mutex, broadcast, mpsc::UnboundedSender},
     time::Instant,
