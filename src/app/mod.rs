@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use crossterm::event::KeyCode;
+use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     Frame,
     layout::{Constraint, Layout},
@@ -19,7 +19,7 @@ mod sidebar;
 pub trait TerminalPane: Send {
     async fn handle_key(
         &mut self,
-        keycode: KeyCode,
+        key_event: KeyEvent,
         current_pane: &mut MainPane,
         focus: &mut Focus,
         server_state: &ServerState,
@@ -57,7 +57,7 @@ impl ClientState {
 
     pub async fn handle_key(
         &mut self,
-        key_code: KeyCode,
+        key_event: KeyEvent,
         server_state: &ServerState,
         needs_redraw: &mut bool,
     ) {
@@ -65,7 +65,7 @@ impl ClientState {
             Focus::Sidebar => {
                 self.sidebar
                     .handle_key(
-                        key_code,
+                        key_event,
                         &mut self.current_pane,
                         &mut self.focus,
                         server_state,
@@ -77,7 +77,7 @@ impl ClientState {
                 MainPane::Counter => {
                     self.counter
                         .handle_key(
-                            key_code,
+                            key_event,
                             &mut self.current_pane,
                             &mut self.focus,
                             server_state,
@@ -88,7 +88,7 @@ impl ClientState {
                 MainPane::Games => {
                     self.games
                         .handle_key(
-                            key_code,
+                            key_event,
                             &mut self.current_pane,
                             &mut self.focus,
                             server_state,
@@ -109,6 +109,7 @@ fn border_col(focused: bool) -> Color {
     }
 }
 
+#[must_use]
 pub fn make_block(focused: bool, index: u8, title: &str) -> Block<'_> {
     Block::bordered()
         .title(

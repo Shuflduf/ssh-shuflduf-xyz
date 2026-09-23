@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use crossterm::event::KeyCode;
+use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -16,15 +16,24 @@ use crate::{
 impl TerminalPane for Wordle {
     async fn handle_key(
         &mut self,
-        key_code: KeyCode,
+        key_event: KeyEvent,
         _current_pane: &mut MainPane,
         _focus: &mut Focus,
         _server_state: &ServerState,
         needs_redraw: &mut bool,
     ) {
-        if (KeyCode::Char('a')..KeyCode::Char('z')).contains(&key_code) {
-            self.current_guess += &key_code.as_char().unwrap().to_string();
-            *needs_redraw = true
+        let code = key_event.code;
+        if (KeyCode::Char('a')..=KeyCode::Char('z')).contains(&code) {
+            self.current_guess += &code.as_char().unwrap().to_string();
+            *needs_redraw = true;
+        } else {
+            match code {
+                KeyCode::Backspace | KeyCode::Delete => {
+                    self.current_guess.pop();
+                    *needs_redraw = true;
+                }
+                _ => {}
+            }
         }
     }
 }

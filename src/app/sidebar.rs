@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use crossterm::event::KeyCode;
+use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -7,6 +7,7 @@ use ratatui::{
     text::Line,
     widgets::{Paragraph, StatefulWidget, Widget},
 };
+use russh::client::KeyboardInteractiveAuthResponse;
 use strum::{EnumCount, IntoEnumIterator, VariantArray};
 
 use crate::{
@@ -18,13 +19,13 @@ use crate::{
 impl TerminalPane for Sidebar {
     async fn handle_key(
         &mut self,
-        key_code: KeyCode,
+        key_event: KeyEvent,
         current_pane: &mut MainPane,
         focus: &mut Focus,
         _server_state: &ServerState,
         needs_redraw: &mut bool,
     ) {
-        match key_code {
+        match key_event.code {
             KeyCode::Up | KeyCode::Char('k') => {
                 self.item = SidebarItem::VARIANTS[(SidebarItem::VARIANTS
                     .iter()
@@ -50,7 +51,7 @@ impl TerminalPane for Sidebar {
                     SidebarItem::Games => MainPane::Games,
                 };
                 *needs_redraw = true;
-                *focus = Focus::Pane
+                *focus = Focus::Pane;
             }
             _ => {}
         }
@@ -74,7 +75,7 @@ impl StatefulWidget for &Sidebar {
         Paragraph::new(lines)
             .block(
                 make_block(*focus == Focus::Sidebar, 1, "Navigation").title_bottom(
-                    Line::from(vec![" [Q]".blue().bold(), " Quit ".into()]).centered(),
+                    Line::from(vec![" [Ctrl+Q]".blue().bold(), " Quit ".into()]).centered(),
                 ),
             )
             .render(area, buf);

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use crossterm::event::KeyCode;
+use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{Terminal, backend::CrosstermBackend, layout::Rect};
 use strum::{Display, EnumCount, EnumIter, EnumProperty, VariantArray};
 use tokio::{
@@ -124,7 +124,7 @@ pub enum ClientEvent {
 
 #[derive(Clone)]
 pub enum ClientMessage {
-    KeyPressed(KeyCode),
+    KeyPressed(KeyEvent),
     TerminalResized(Rect),
 }
 

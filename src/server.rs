@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use color_eyre::eyre::Result;
-use crossterm::event::KeyCode;
+use crossterm::event::{KeyCode, KeyModifiers, ModifierKeyCode};
 use ratatui::{
     Terminal, TerminalOptions, Viewport, backend::CrosstermBackend, layout::Rect, widgets::Clear,
 };
@@ -231,7 +231,7 @@ fn handle_event(client_event: ClientEvent, input_parser: &mut InputParser) -> Ve
         ClientEvent::Input(incoming_bytes) => input_parser
             .feed(&incoming_bytes)
             .into_iter()
-            .map(|key_event| ClientMessage::KeyPressed(key_event.code))
+            .map(|key_event| ClientMessage::KeyPressed(key_event))
             .collect(),
         ClientEvent::Resize(new_size_rect) => vec![ClientMessage::TerminalResized(new_size_rect)],
     }
@@ -246,8 +246,10 @@ async fn handle_message(
     clear_screen: &mut bool,
 ) {
     match message {
-        ClientMessage::KeyPressed(key_code) => match key_code {
-            KeyCode::Char('q') => client_state.exiting = true,
+        ClientMessage::KeyPressed(key_event) => match key_event.code {
+            KeyCode::Char('q') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
+                client_state.exiting = true
+            }
             // KeyCode::Right => {
             //     *server_state.current_value.lock().await += 1;
             //     let _ = server_state.broadcast_sender.send(ServerMessage::Increment);
@@ -261,7 +263,7 @@ async fn handle_message(
             // }
             _ => {
                 client_state
-                    .handle_key(key_code, server_state, needs_redraw)
+                    .handle_key(key_event, server_state, needs_redraw)
                     .await;
             }
         },

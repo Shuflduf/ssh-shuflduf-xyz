@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use crossterm::event::KeyCode;
+use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
@@ -12,7 +12,6 @@ use strum::{EnumCount, EnumProperty, IntoEnumIterator, VariantArray};
 
 use crate::{
     app::{TerminalPane, border_col, make_block},
-    games::wordle,
     types::{Focus, Game, Games, MainPane, ServerState, Wordle},
 };
 
@@ -20,7 +19,7 @@ use crate::{
 impl TerminalPane for Games {
     async fn handle_key(
         &mut self,
-        keycode: KeyCode,
+        key_event: KeyEvent,
         current_pane: &mut MainPane,
         focus: &mut Focus,
         server_state: &ServerState,
@@ -32,13 +31,13 @@ impl TerminalPane for Games {
                     self.wordle
                         .as_mut()
                         .unwrap()
-                        .handle_key(keycode, current_pane, focus, server_state, needs_redraw)
+                        .handle_key(key_event, current_pane, focus, server_state, needs_redraw)
                         .await;
                 }
                 _ => todo!(),
-            };
+            }
         } else {
-            match keycode {
+            match key_event.code {
                 KeyCode::Up | KeyCode::Char('k') => {
                     self.focused_game = Game::VARIANTS[(Game::VARIANTS
                         .iter()
@@ -64,8 +63,8 @@ impl TerminalPane for Games {
                             self.wordle = Some(Wordle {
                                 correct_word: "HORSE".into(),
                                 guesses: vec![],
-                                current_guess: "".into(),
-                            })
+                                current_guess: String::new(),
+                            });
                         }
                         _ => todo!(),
                     }
