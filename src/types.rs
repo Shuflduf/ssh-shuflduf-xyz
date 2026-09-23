@@ -78,6 +78,7 @@ pub struct Wordle {
 #[derive(Default)]
 pub struct Games {
     pub wordle: Option<Wordle>,
+
     pub focused_game: Game,
     pub active_game: Option<Game>,
 }
