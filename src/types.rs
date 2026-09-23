@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use crossterm::event::KeyCode;
 use ratatui::{Terminal, backend::CrosstermBackend, layout::Rect};
-use strum::{Display, EnumCount, EnumIter, VariantArray};
+use strum::{Display, EnumCount, EnumIter, EnumProperty, VariantArray};
 use tokio::{
     sync::{Mutex, broadcast, mpsc::UnboundedSender},
     time::Instant,
@@ -46,15 +46,41 @@ pub struct Counter {
     pub last_increment_time: Option<Instant>,
 }
 
-#[derive(Debug, EnumIter, EnumCount, Display)]
+#[derive(
+    Debug,
+    EnumIter,
+    EnumCount,
+    Display,
+    EnumProperty,
+    Default,
+    PartialEq,
+    Eq,
+    VariantArray,
+    Clone,
+    Copy,
+)]
 pub enum Game {
+    #[default]
+    #[strum(props(Description = "Try to guess a word"))]
     Wordle,
+    #[strum(props(Description = "Consume fruit to grow longer"))]
     Snake,
+    #[strum(props(Description = "Place falling blocks in a stack"))]
     Tetris,
 }
 
+pub struct Wordle {
+    pub correct_word: String,
+    pub guesses: Vec<String>,
+    pub current_guess: String,
+}
+
 #[derive(Default)]
-pub struct Games {}
+pub struct Games {
+    pub wordle: Option<Wordle>,
+    pub focused_game: Game,
+    pub active_game: Option<Game>,
+}
 
 #[derive(Default)]
 pub struct ClientState {

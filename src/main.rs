@@ -1,6 +1,7 @@
 use crate::types::AppServer;
 
-mod app;
+pub mod app;
+mod games;
 mod input;
 mod server;
 mod ssh;

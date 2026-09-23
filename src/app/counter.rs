@@ -38,6 +38,7 @@ impl TerminalPane for Counter {
         &mut self,
         key_code: KeyCode,
         _current_pane: &mut MainPane,
+        _focus: &mut Focus,
         server_state: &ServerState,
         needs_redraw: &mut bool,
     ) {

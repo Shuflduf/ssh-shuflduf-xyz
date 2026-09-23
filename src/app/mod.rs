@@ -19,8 +19,9 @@ mod sidebar;
 pub trait TerminalPane: Send {
     async fn handle_key(
         &mut self,
-        key_code: KeyCode,
+        keycode: KeyCode,
         current_pane: &mut MainPane,
+        focus: &mut Focus,
         server_state: &ServerState,
         needs_redraw: &mut bool,
     );
@@ -63,18 +64,36 @@ impl ClientState {
         match self.focus {
             Focus::Sidebar => {
                 self.sidebar
-                    .handle_key(key_code, &mut self.current_pane, server_state, needs_redraw)
+                    .handle_key(
+                        key_code,
+                        &mut self.current_pane,
+                        &mut self.focus,
+                        server_state,
+                        needs_redraw,
+                    )
                     .await;
             }
             Focus::Pane => match self.current_pane {
                 MainPane::Counter => {
                     self.counter
-                        .handle_key(key_code, &mut self.current_pane, server_state, needs_redraw)
+                        .handle_key(
+                            key_code,
+                            &mut self.current_pane,
+                            &mut self.focus,
+                            server_state,
+                            needs_redraw,
+                        )
                         .await;
                 }
                 MainPane::Games => {
-                    self.counter
-                        .handle_key(key_code, &mut self.current_pane, server_state, needs_redraw)
+                    self.games
+                        .handle_key(
+                            key_code,
+                            &mut self.current_pane,
+                            &mut self.focus,
+                            server_state,
+                            needs_redraw,
+                        )
                         .await;
                 }
             },
@@ -82,20 +101,23 @@ impl ClientState {
     }
 }
 
-fn make_block(focused: bool, index: u8, title: &str) -> Block<'_> {
-    let border_col = if focused {
+fn border_col(focused: bool) -> Color {
+    if focused {
         Color::White
     } else {
         Color::DarkGray
-    };
+    }
+}
+
+pub fn make_block(focused: bool, index: u8, title: &str) -> Block<'_> {
     Block::bordered()
         .title(
             Line::from(vec![
                 format!(" [{index}]").blue().bold(),
-                format!(" {title} ").into(),
+                format!(" {title} ").bold(),
             ])
             .centered(),
         )
-        .border_style(Style::new().fg(border_col))
+        .border_style(Style::new().fg(border_col(focused)))
         .border_set(border::ROUNDED)
 }

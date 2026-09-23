@@ -20,6 +20,7 @@ impl TerminalPane for Sidebar {
         &mut self,
         key_code: KeyCode,
         current_pane: &mut MainPane,
+        focus: &mut Focus,
         _server_state: &ServerState,
         needs_redraw: &mut bool,
     ) {
@@ -49,6 +50,7 @@ impl TerminalPane for Sidebar {
                     SidebarItem::Games => MainPane::Games,
                 };
                 *needs_redraw = true;
+                *focus = Focus::Pane
             }
             _ => {}
         }
