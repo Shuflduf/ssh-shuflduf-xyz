@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use color_eyre::eyre::Result;
-use crossterm::event::{KeyCode, KeyModifiers, ModifierKeyCode};
+use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::{
     Terminal, TerminalOptions, Viewport, backend::CrosstermBackend, layout::Rect, widgets::Clear,
 };
@@ -231,7 +231,7 @@ fn handle_event(client_event: ClientEvent, input_parser: &mut InputParser) -> Ve
         ClientEvent::Input(incoming_bytes) => input_parser
             .feed(&incoming_bytes)
             .into_iter()
-            .map(|key_event| ClientMessage::KeyPressed(key_event))
+            .map(ClientMessage::KeyPressed)
             .collect(),
         ClientEvent::Resize(new_size_rect) => vec![ClientMessage::TerminalResized(new_size_rect)],
     }
@@ -248,7 +248,7 @@ async fn handle_message(
     match message {
         ClientMessage::KeyPressed(key_event) => match key_event.code {
             KeyCode::Char('q') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
-                client_state.exiting = true
+                client_state.exiting = true;
             }
             // KeyCode::Right => {
             //     *server_state.current_value.lock().await += 1;

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::KeyEvent;
 use ratatui::{Terminal, backend::CrosstermBackend, layout::Rect};
 use strum::{Display, EnumCount, EnumIter, EnumProperty, VariantArray};
 use tokio::{

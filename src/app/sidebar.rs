@@ -7,7 +7,6 @@ use ratatui::{
     text::Line,
     widgets::{Paragraph, StatefulWidget, Widget},
 };
-use russh::client::KeyboardInteractiveAuthResponse;
 use strum::{EnumCount, IntoEnumIterator, VariantArray};
 
 use crate::{
