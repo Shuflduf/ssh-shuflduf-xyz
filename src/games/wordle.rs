@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     buffer::Buffer,
-    layout::{Constraint, Layout, Rect},
+    layout::{Constraint, Flex, Layout, Rect},
     style::{Color, Stylize},
     text::Line,
     widgets::{Paragraph, StatefulWidget, Widget},
@@ -76,7 +76,14 @@ impl StatefulWidget for &Wordle {
             Constraint::Length(WORD_LENGTH * 3),
             Constraint::Length(GUESS_COUNT * 3),
         );
-        let rows = Layout::vertical([Constraint::Length(3); GUESS_COUNT as usize]).split(game_area);
+        let layout = Layout::horizontal([
+            Constraint::Length(game_area.width),
+            Constraint::Length(KEYBOARD[0].len() as u16 * 3),
+        ])
+        .flex(Flex::SpaceEvenly)
+        .split(area);
+
+        let rows = Layout::vertical([Constraint::Length(3); GUESS_COUNT as usize]).split(layout[0]);
         for (row_idx, row_area) in rows.iter().enumerate() {
             let cols =
                 Layout::horizontal([Constraint::Length(3); WORD_LENGTH as usize]).split(*row_area);
@@ -93,6 +100,27 @@ impl StatefulWidget for &Wordle {
                     .collect()
             } else {
                 vec![]
+            };
+
+            for (col_idx, col_area) in cols.iter().enumerate() {
+                let (c, (bg, fg)) = letters
+                    .get(col_idx)
+                    .copied()
+                    .unwrap_or((' ', (SCHEME.surface, SCHEME.text)));
+                Wordle::letter_cell(c, bg, fg).render(*col_area, buf);
+            }
+        }
+
+        let keyboard_layout =
+            Layout::vertical([Constraint::Length(3); KEYBOARD.len()]).split(layout[1]);
+        for (row_idx, row_area) in keyboard_layout.iter().enumerate() {
+            let cols = Layout::horizontal(vec![Constraint::Length(3); KEYBOARD[row_idx].len()])
+                .split(*row_area);
+            let letters: Vec<(char, (Color, Color))> = {
+                KEYBOARD[row_idx]
+                    .iter()
+                    .map(|&c| (c, self.keyboard_colour(c)))
+                    .collect()
             };
 
             for (col_idx, col_area) in cols.iter().enumerate() {
@@ -128,6 +156,40 @@ impl Wordle {
         } else {
             (SCHEME.wordle_incorrect, SCHEME.text)
         }
+    }
+
+    fn keyboard_colour(&self, c: char) -> (Color, Color) {
+        for guess in self.guesses.clone() {
+            for (i, guess_c) in guess.chars().enumerate() {
+                if c == guess_c && self.correct_word.chars().collect::<Vec<char>>()[i] == guess_c {
+                    return (SCHEME.wordle_correct, SCHEME.surface_secondary);
+                }
+            }
+        }
+
+        for guess in self.guesses.clone() {
+            for guess_c in guess.chars() {
+                if c == guess_c
+                    && self
+                        .correct_word
+                        .chars()
+                        .collect::<Vec<char>>()
+                        .contains(&guess_c)
+                {
+                    return (SCHEME.worlde_hint, SCHEME.surface_secondary);
+                }
+            }
+        }
+
+        for guess in self.guesses.clone() {
+            for guess_c in guess.chars() {
+                if c == guess_c {
+                    return (SCHEME.wordle_incorrect, SCHEME.text);
+                }
+            }
+        }
+
+        (SCHEME.surface, SCHEME.text)
     }
 
     fn letter_cell(c: char, bg: Color, fg: Color) -> Paragraph<'static> {
