@@ -116,13 +116,25 @@ impl StatefulWidget for &Wordle {
             let cols =
                 Layout::horizontal([Constraint::Length(3); WORD_LENGTH as usize]).split(*row_area);
             let letters = if let Some(guess) = self.guesses.get(row_idx) {
+                let horse = row_idx == GUESS_COUNT as usize - 1
+                    && self.guesses == vec!["horse"].repeat(GUESS_COUNT.into());
+
                 let mut remaining_letters =
                     self.correct_word.clone().chars().collect::<Vec<char>>();
 
                 guess
                     .chars()
                     .enumerate()
-                    .map(|(pos, c)| (c, self.color_at(pos, c, &mut remaining_letters)))
+                    .map(|(pos, c)| {
+                        (
+                            c,
+                            if horse {
+                                (SCHEME.wordle_correct, SCHEME.surface_secondary)
+                            } else {
+                                self.color_at(pos, c, &mut remaining_letters)
+                            },
+                        )
+                    })
                     .collect()
             } else if row_idx == self.guesses.len() {
                 self.current_guess
@@ -145,10 +157,15 @@ impl StatefulWidget for &Wordle {
         for (row_idx, row_area) in keyboard_layout.iter().enumerate() {
             let cols = Layout::horizontal(vec![Constraint::Length(3); KEYBOARD[row_idx].len()])
                 .split(*row_area);
+            let word = if self.horse() {
+                "horse"
+            } else {
+                &self.correct_word
+            };
             let letters: Vec<(char, (Color, Color))> = {
                 KEYBOARD[row_idx]
                     .iter()
-                    .map(|&c| (c, self.keyboard_colour(c)))
+                    .map(|&c| (c, self.keyboard_colour(c, word)))
                     .collect()
             };
 
@@ -164,7 +181,12 @@ impl StatefulWidget for &Wordle {
         if self.guesses.len() == GUESS_COUNT.into()
             && self.guesses.last() != Some(&self.correct_word)
         {
-            for (i, c) in self.correct_word.chars().enumerate() {
+            let word = if self.horse() {
+                "horse"
+            } else {
+                &self.correct_word
+            };
+            for (i, c) in word.chars().enumerate() {
                 Wordle::letter_cell(c, SCHEME.wordle_correct, SCHEME.surface_secondary)
                     .render(correct_word_layout[i], buf);
             }
@@ -195,10 +217,10 @@ impl Wordle {
         }
     }
 
-    fn keyboard_colour(&self, c: char) -> (Color, Color) {
+    fn keyboard_colour(&self, c: char, word: &str) -> (Color, Color) {
         for guess in self.guesses.clone() {
             for (i, guess_c) in guess.chars().enumerate() {
-                if c == guess_c && self.correct_word.chars().collect::<Vec<char>>()[i] == guess_c {
+                if c == guess_c && word.chars().collect::<Vec<char>>()[i] == guess_c {
                     return (SCHEME.wordle_correct, SCHEME.surface_secondary);
                 }
             }
@@ -206,13 +228,7 @@ impl Wordle {
 
         for guess in self.guesses.clone() {
             for guess_c in guess.chars() {
-                if c == guess_c
-                    && self
-                        .correct_word
-                        .chars()
-                        .collect::<Vec<char>>()
-                        .contains(&guess_c)
-                {
+                if c == guess_c && word.chars().collect::<Vec<char>>().contains(&guess_c) {
                     return (SCHEME.wordle_hint, SCHEME.surface_secondary);
                 }
             }
@@ -225,6 +241,10 @@ impl Wordle {
         }
 
         (SCHEME.surface_secondary, SCHEME.text)
+    }
+
+    fn horse(&self) -> bool {
+        self.guesses == vec!["horse"].repeat(GUESS_COUNT.into())
     }
 
     fn letter_cell(c: char, bg: Color, fg: Color) -> Paragraph<'static> {
