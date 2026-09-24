@@ -117,7 +117,7 @@ impl StatefulWidget for &Wordle {
                 Layout::horizontal([Constraint::Length(3); WORD_LENGTH as usize]).split(*row_area);
             let letters = if let Some(guess) = self.guesses.get(row_idx) {
                 let horse = row_idx == GUESS_COUNT as usize - 1
-                    && self.guesses == vec!["horse"].repeat(GUESS_COUNT.into());
+                    && self.guesses == ["horse"].repeat(GUESS_COUNT.into());
 
                 let mut remaining_letters =
                     self.correct_word.clone().chars().collect::<Vec<char>>();
@@ -244,7 +244,7 @@ impl Wordle {
     }
 
     fn horse(&self) -> bool {
-        self.guesses == vec!["horse"].repeat(GUESS_COUNT.into())
+        self.guesses == ["horse"].repeat(GUESS_COUNT.into())
     }
 
     fn letter_cell(c: char, bg: Color, fg: Color) -> Paragraph<'static> {

@@ -301,19 +301,15 @@ impl ServerState {
 }
 
 fn load_host_keys() -> Result<Vec<PrivateKey>> {
-    let dir = env::var_os("SSH_HOST_KEYS_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| {
-            env::var_os("XDG_DATA_HOME")
-                .map(PathBuf::from)
-                .unwrap_or_else(|| {
+    let dir = env::var_os("SSH_HOST_KEYS_DIR").map_or_else(|| {
+            env::var_os("XDG_DATA_HOME").map_or_else(|| {
                     env::var_os("HOME")
                         .map(PathBuf::from)
                         .unwrap_or_default()
                         .join(".local/share")
-                })
+                }, PathBuf::from)
                 .join(env!("CARGO_PKG_NAME"))
-        });
+        }, PathBuf::from);
     fs::create_dir_all(&dir)?;
     let host_key = dir.join("ssh_host_ed25519_key");
     if !host_key.exists() {

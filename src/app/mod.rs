@@ -112,6 +112,7 @@ fn border_col(focused: bool) -> Color {
     }
 }
 
+#[must_use]
 pub fn key_label<'a>(key: &'a str, label: &'a str) -> Line<'a> {
     Line::from(vec![
         format!(" [{key}]").fg(SCHEME.keys).bold(),
@@ -119,6 +120,7 @@ pub fn key_label<'a>(key: &'a str, label: &'a str) -> Line<'a> {
     ])
 }
 
+#[must_use]
 pub fn make_block(focused: bool) -> Block<'static> {
     Block::bordered()
         .bg(SCHEME.base)
