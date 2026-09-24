@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, env, fs, path::PathBuf, sync::Arc};
 
 use color_eyre::eyre::Result;
 use crossterm::{
@@ -11,7 +11,7 @@ use ratatui::{
 };
 use russh::{
     Channel, ChannelId, ChannelWriteHalf, Pty,
-    keys::PublicKey,
+    keys::{Algorithm, PrivateKey, PublicKey, ssh_key::LineEnding},
     server::{Auth, ChannelOpenHandle, Config, Handler, Msg, Server, Session},
 };
 use tokio::sync::{
@@ -27,13 +27,10 @@ use crate::types::{
 impl AppServer {
     pub async fn run(&mut self) -> Result<()> {
         let config = Config {
-            inactivity_timeout: Some(std::time::Duration::from_mins(1)),
+            inactivity_timeout: Some(std::time::Duration::from_hours(1)),
             auth_rejection_time: std::time::Duration::from_secs(3),
             auth_rejection_time_initial: Some(std::time::Duration::from_secs(0)),
-            keys: vec![
-                russh::keys::PrivateKey::random(&mut rand::rng(), russh::keys::Algorithm::Ed25519)
-                    .unwrap(),
-            ],
+            keys: load_host_keys()?,
             nodelay: true,
             ..Default::default()
         };
@@ -301,4 +298,44 @@ impl ServerState {
             ..Default::default()
         }
     }
+}
+
+fn load_host_keys() -> Result<Vec<PrivateKey>> {
+    let dir = env::var_os("SSH_HOST_KEYS_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| {
+            env::var_os("XDG_DATA_HOME")
+                .map(PathBuf::from)
+                .unwrap_or_else(|| {
+                    env::var_os("HOME")
+                        .map(PathBuf::from)
+                        .unwrap_or_default()
+                        .join(".local/share")
+                })
+                .join(env!("CARGO_PKG_NAME"))
+        });
+    fs::create_dir_all(&dir)?;
+    let host_key = dir.join("ssh_host_ed25519_key");
+    if !host_key.exists() {
+        let key = russh::keys::PrivateKey::random(&mut rand::rng(), Algorithm::Ed25519)?;
+        fs::write(&host_key, key.to_openssh(LineEnding::LF)?)?;
+    }
+
+    [
+        "ssh_host_ed25519_key",
+        "ssh_host_rsa_key",
+        "ssh_host_ecdsa_key",
+    ]
+    .into_iter()
+    .filter_map(|alg| {
+        let path = dir.join(alg);
+        match russh::keys::load_secret_key(path, None) {
+            Ok(key) => Some(Ok(key)),
+            Err(e) => {
+                eprintln!("Skipping {alg}: {e}");
+                None
+            }
+        }
+    })
+    .collect()
 }

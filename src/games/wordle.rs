@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Flex, Layout, Rect},
@@ -35,7 +35,14 @@ impl TerminalPane for Wordle {
         needs_redraw: &mut bool,
     ) {
         let code = key_event.code;
-        if self.guesses.last() == Some(&self.correct_word) {
+        if code == KeyCode::Char('r') && key_event.modifiers.contains(KeyModifiers::CONTROL) {
+            *self = Wordle::make_game();
+            *needs_redraw = true;
+            return;
+        }
+        if self.guesses.last() == Some(&self.correct_word)
+            || self.guesses.len() > GUESS_COUNT.into()
+        {
             return;
         }
         if (KeyCode::Char('a')..=KeyCode::Char('z')).contains(&code) {
@@ -70,28 +77,44 @@ impl StatefulWidget for &Wordle {
         make_block(*focus == Focus::Pane)
             .title_top(key_label("2", "Wordle").centered())
             .title_top(key_label("Esc", "Go Back").left_aligned())
+            .title_bottom(key_label("Ctrl+R", "Retry").centered())
             .render(area, buf);
 
-        let game_area = area.centered(
-            Constraint::Length(WORD_LENGTH * 3),
-            Constraint::Length(GUESS_COUNT * 3),
+        let game_area = Rect::new(0, 0, WORD_LENGTH * 3, GUESS_COUNT * 3);
+        let keyboard_area = Rect::new(
+            game_area.right() + 6,
+            0,
+            KEYBOARD[0].len() as u16 * 3,
+            KEYBOARD.len() as u16 * 3,
         );
+        let combined_area = game_area.union(keyboard_area);
+        let combined = area.centered(
+            Constraint::Length(combined_area.width),
+            Constraint::Length(combined_area.height),
+        );
+
         let layout = Layout::horizontal([
             Constraint::Length(game_area.width),
-            Constraint::Length(KEYBOARD[0].len() as u16 * 3),
+            Constraint::Length(keyboard_area.width),
         ])
-        .flex(Flex::SpaceEvenly)
-        .split(area);
+        .flex(Flex::SpaceBetween)
+        .split(combined);
+
+        let keyboard_layout =
+            Layout::vertical([Constraint::Length(3); KEYBOARD.len()]).split(layout[1]);
 
         let rows = Layout::vertical([Constraint::Length(3); GUESS_COUNT as usize]).split(layout[0]);
         for (row_idx, row_area) in rows.iter().enumerate() {
             let cols =
                 Layout::horizontal([Constraint::Length(3); WORD_LENGTH as usize]).split(*row_area);
             let letters = if let Some(guess) = self.guesses.get(row_idx) {
+                let mut remaining_letters =
+                    self.correct_word.clone().chars().collect::<Vec<char>>();
+
                 guess
                     .chars()
                     .enumerate()
-                    .map(|(pos, c)| (c, self.color_at(pos, c)))
+                    .map(|(pos, c)| (c, self.color_at(pos, c, &mut remaining_letters)))
                     .collect()
             } else if row_idx == self.guesses.len() {
                 self.current_guess
@@ -111,8 +134,6 @@ impl StatefulWidget for &Wordle {
             }
         }
 
-        let keyboard_layout =
-            Layout::vertical([Constraint::Length(3); KEYBOARD.len()]).split(layout[1]);
         for (row_idx, row_area) in keyboard_layout.iter().enumerate() {
             let cols = Layout::horizontal(vec![Constraint::Length(3); KEYBOARD[row_idx].len()])
                 .split(*row_area);
@@ -145,8 +166,7 @@ impl Wordle {
         }
     }
 
-    fn color_at(&self, pos: usize, c: char) -> (Color, Color) {
-        let mut remaining: Vec<char> = self.correct_word.clone().chars().collect();
+    fn color_at(&self, pos: usize, c: char, remaining: &mut [char]) -> (Color, Color) {
         if remaining[pos] == c {
             remaining[pos] = ' ';
             (SCHEME.wordle_correct, SCHEME.surface_secondary)
@@ -182,14 +202,12 @@ impl Wordle {
         }
 
         for guess in self.guesses.clone() {
-            for guess_c in guess.chars() {
-                if c == guess_c {
-                    return (SCHEME.wordle_incorrect, SCHEME.text);
-                }
+            if guess.chars().collect::<Vec<char>>().contains(&c) {
+                return (SCHEME.wordle_incorrect, SCHEME.text);
             }
         }
 
-        (SCHEME.surface, SCHEME.text)
+        (SCHEME.surface_secondary, SCHEME.text)
     }
 
     fn letter_cell(c: char, bg: Color, fg: Color) -> Paragraph<'static> {
