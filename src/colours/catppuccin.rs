@@ -12,5 +12,5 @@ pub const CATPPUCCIN: ColourScheme = ColourScheme {
     accent: Color::Rgb(203, 166, 247),
     wordle_correct: Color::Rgb(166, 227, 161),
     wordle_incorrect: Color::Rgb(49, 50, 68),
-    worlde_hint: Color::Rgb(249, 226, 135),
+    wordle_hint: Color::Rgb(249, 226, 135),
 };

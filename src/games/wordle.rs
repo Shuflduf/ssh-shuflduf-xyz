@@ -152,7 +152,7 @@ impl Wordle {
             (SCHEME.wordle_correct, SCHEME.surface_secondary)
         } else if remaining.contains(&c) {
             remaining[pos] = ' ';
-            (SCHEME.worlde_hint, SCHEME.surface_secondary)
+            (SCHEME.wordle_hint, SCHEME.surface_secondary)
         } else {
             (SCHEME.wordle_incorrect, SCHEME.text)
         }
@@ -176,7 +176,7 @@ impl Wordle {
                         .collect::<Vec<char>>()
                         .contains(&guess_c)
                 {
-                    return (SCHEME.worlde_hint, SCHEME.surface_secondary);
+                    return (SCHEME.wordle_hint, SCHEME.surface_secondary);
                 }
             }
         }

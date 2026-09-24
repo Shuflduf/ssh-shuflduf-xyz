@@ -104,7 +104,7 @@ pub struct ColourScheme {
     pub accent: Color,
     pub wordle_correct: Color,
     pub wordle_incorrect: Color,
-    pub worlde_hint: Color,
+    pub wordle_hint: Color,
 }
 
 // server stuff
