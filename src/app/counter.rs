@@ -10,19 +10,23 @@ use ratatui::{
 
 use crate::{
     app::{TerminalPane, make_block},
+    colours::SCHEME,
     types::{Counter, Focus, MainPane, ServerMessage, ServerState},
 };
 
 impl StatefulWidget for &Counter {
     type State = Focus;
     fn render(self, area: Rect, buf: &mut Buffer, focus: &mut Focus) {
-        let instructions = Line::from(vec![" [Enter]".blue().bold(), " Increment ".into()]);
+        let instructions = Line::from(vec![
+            " [Enter]".fg(SCHEME.keys).bold(),
+            " Increment ".into(),
+        ]);
         let block =
             make_block(*focus == Focus::Pane, 2, "Counter").title_bottom(instructions.centered());
 
         let counter_text = Text::from(vec![Line::from(vec![
-            "Value: ".into(),
-            self.count.to_string().yellow(),
+            "Value: ".fg(SCHEME.text),
+            self.count.to_string().fg(SCHEME.accent),
         ])]);
 
         Paragraph::new(counter_text)

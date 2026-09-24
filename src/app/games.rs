@@ -12,6 +12,7 @@ use strum::{EnumCount, EnumProperty, IntoEnumIterator, VariantArray};
 
 use crate::{
     app::{TerminalPane, border_col, make_block},
+    colours::SCHEME,
     types::{Focus, Game, Games, MainPane, ServerState, Wordle},
 };
 
@@ -60,11 +61,9 @@ impl TerminalPane for Games {
                 KeyCode::Enter => {
                     match self.focused_game {
                         Game::Wordle => {
-                            self.wordle = Some(Wordle {
-                                correct_word: "HORSE".into(),
-                                guesses: vec![],
-                                current_guess: String::new(),
-                            });
+                            if self.wordle.is_none() {
+                                self.wordle = Some(Wordle::make_game());
+                            }
                         }
                         _ => todo!(),
                     }
@@ -96,8 +95,13 @@ fn render_game_list(games: &Games, area: Rect, buf: &mut Buffer, focus: &mut Foc
 
     for (i, game) in Game::iter().enumerate() {
         Paragraph::new(Line::from(vec![
-            format!(" {:07} ", game.to_string()).blue().bold(),
-            game.get_str("Description").unwrap().dim().italic(),
+            format!(" {:07} ", game.to_string())
+                .fg(SCHEME.accent)
+                .bold(),
+            game.get_str("Description")
+                .unwrap()
+                .fg(SCHEME.text_secondary)
+                .italic(),
         ]))
         .block(
             Block::bordered()

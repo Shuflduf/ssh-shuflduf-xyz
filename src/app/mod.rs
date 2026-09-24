@@ -9,7 +9,10 @@ use ratatui::{
     widgets::Block,
 };
 
-use crate::types::{ClientState, Focus, MainPane, ServerMessage, ServerState};
+use crate::{
+    colours::SCHEME,
+    types::{ClientState, Focus, MainPane, ServerMessage, ServerState},
+};
 
 mod counter;
 mod games;
@@ -103,9 +106,9 @@ impl ClientState {
 
 fn border_col(focused: bool) -> Color {
     if focused {
-        Color::White
+        SCHEME.text
     } else {
-        Color::DarkGray
+        SCHEME.text_secondary
     }
 }
 
@@ -114,11 +117,12 @@ pub fn make_block(focused: bool, index: u8, title: &str) -> Block<'_> {
     Block::bordered()
         .title(
             Line::from(vec![
-                format!(" [{index}]").blue().bold(),
+                format!(" [{index}]").fg(SCHEME.keys).bold(),
                 format!(" {title} ").bold(),
             ])
             .centered(),
         )
+        .bg(SCHEME.base)
         .border_style(Style::new().fg(border_col(focused)))
         .border_set(border::ROUNDED)
 }

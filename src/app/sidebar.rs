@@ -11,6 +11,7 @@ use strum::{EnumCount, IntoEnumIterator, VariantArray};
 
 use crate::{
     app::{TerminalPane, make_block},
+    colours::SCHEME,
     types::{Focus, MainPane, ServerState, Sidebar, SidebarItem},
 };
 
@@ -63,9 +64,9 @@ impl StatefulWidget for &Sidebar {
         let lines = SidebarItem::iter()
             .map(|item| {
                 let text_col = if item == self.item {
-                    Color::White
+                    SCHEME.text
                 } else {
-                    Color::DarkGray
+                    SCHEME.text_secondary
                 };
                 Line::from(item.to_string()).set_style(Style::new().fg(text_col))
             })
@@ -74,7 +75,8 @@ impl StatefulWidget for &Sidebar {
         Paragraph::new(lines)
             .block(
                 make_block(*focus == Focus::Sidebar, 1, "Navigation").title_bottom(
-                    Line::from(vec![" [Ctrl+Q]".blue().bold(), " Quit ".into()]).centered(),
+                    Line::from(vec![" [Ctrl+Q]".fg(SCHEME.keys).bold(), " Quit ".into()])
+                        .centered(),
                 ),
             )
             .render(area, buf);

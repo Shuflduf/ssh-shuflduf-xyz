@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use crossterm::event::KeyEvent;
-use ratatui::{Terminal, backend::CrosstermBackend, layout::Rect};
+use ratatui::{Terminal, backend::CrosstermBackend, layout::Rect, style::Color};
 use strum::{Display, EnumCount, EnumIter, EnumProperty, VariantArray};
 use tokio::{
     sync::{Mutex, broadcast, mpsc::UnboundedSender},
@@ -92,6 +92,19 @@ pub struct ClientState {
     pub current_pane: MainPane,
     pub focus: Focus,
     pub exiting: bool,
+}
+
+pub struct ColourScheme {
+    pub base: Color,
+    pub surface: Color,
+    pub surface_secondary: Color,
+    pub text: Color,
+    pub text_secondary: Color,
+    pub keys: Color,
+    pub accent: Color,
+    pub wordle_correct: Color,
+    pub wordle_incorrect: Color,
+    pub worlde_hint: Color,
 }
 
 // server stuff
