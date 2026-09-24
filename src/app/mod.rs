@@ -112,16 +112,15 @@ fn border_col(focused: bool) -> Color {
     }
 }
 
-#[must_use]
-pub fn make_block(focused: bool, index: u8, title: &str) -> Block<'_> {
+pub fn key_label<'a>(key: &'a str, label: &'a str) -> Line<'a> {
+    Line::from(vec![
+        format!(" [{key}]").fg(SCHEME.keys).bold(),
+        format!(" {label} ").bold(),
+    ])
+}
+
+pub fn make_block(focused: bool) -> Block<'static> {
     Block::bordered()
-        .title(
-            Line::from(vec![
-                format!(" [{index}]").fg(SCHEME.keys).bold(),
-                format!(" {title} ").bold(),
-            ])
-            .centered(),
-        )
         .bg(SCHEME.base)
         .border_style(Style::new().fg(border_col(focused)))
         .border_set(border::ROUNDED)

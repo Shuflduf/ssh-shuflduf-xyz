@@ -11,7 +11,7 @@ use ratatui::{
 use strum::{EnumCount, EnumProperty, IntoEnumIterator, VariantArray};
 
 use crate::{
-    app::{TerminalPane, border_col, make_block},
+    app::{TerminalPane, border_col, key_label, make_block},
     colours::SCHEME,
     types::{Focus, Game, Games, MainPane, ServerState, Wordle},
 };
@@ -27,6 +27,10 @@ impl TerminalPane for Games {
         needs_redraw: &mut bool,
     ) {
         if let Some(game) = self.active_game {
+            if key_event.code.is_esc() {
+                self.active_game = None;
+                *needs_redraw = true;
+            }
             match game {
                 Game::Wordle => {
                     self.wordle
@@ -91,7 +95,9 @@ fn render_game_list(games: &Games, area: Rect, buf: &mut Buffer, focus: &mut Foc
     let list = Layout::vertical([Constraint::Length(3); Game::COUNT]).margin(2);
     let areas = area.layout_vec(&list);
 
-    make_block(*focus == Focus::Pane, 2, "Games").render(area, buf);
+    make_block(*focus == Focus::Pane)
+        .title_top(key_label("2", "Games").centered())
+        .render(area, buf);
 
     for (i, game) in Game::iter().enumerate() {
         Paragraph::new(Line::from(vec![

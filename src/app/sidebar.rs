@@ -10,7 +10,7 @@ use ratatui::{
 use strum::{EnumCount, IntoEnumIterator, VariantArray};
 
 use crate::{
-    app::{TerminalPane, make_block},
+    app::{TerminalPane, key_label, make_block},
     colours::SCHEME,
     types::{Focus, MainPane, ServerState, Sidebar, SidebarItem},
 };
@@ -74,10 +74,9 @@ impl StatefulWidget for &Sidebar {
 
         Paragraph::new(lines)
             .block(
-                make_block(*focus == Focus::Sidebar, 1, "Navigation").title_bottom(
-                    Line::from(vec![" [Ctrl+Q]".fg(SCHEME.keys).bold(), " Quit ".into()])
-                        .centered(),
-                ),
+                make_block(*focus == Focus::Sidebar)
+                    .title_top(key_label("1", "Navigation").centered())
+                    .title_bottom(key_label("Ctrl+Q", "Quit").centered()),
             )
             .render(area, buf);
     }

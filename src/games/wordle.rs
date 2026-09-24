@@ -1,4 +1,3 @@
-
 use async_trait::async_trait;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
@@ -10,7 +9,7 @@ use ratatui::{
 };
 
 use crate::{
-    app::{TerminalPane, make_block},
+    app::{TerminalPane, key_label, make_block},
     colours::SCHEME,
     types::{Focus, MainPane, ServerState, Wordle},
 };
@@ -19,6 +18,11 @@ const WORD_LENGTH: u16 = 5;
 const GUESS_COUNT: u16 = 6;
 const WORDLE_ALLOWED: &str = include_str!("wordle_allowed.txt");
 const WORDLE_ANSWERS: &str = include_str!("wordle_answers.txt");
+const KEYBOARD: &[&[char]] = &[
+    &['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+    &['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
+    &['z', 'x', 'c', 'v', 'b', 'n', 'm'],
+];
 
 #[async_trait]
 impl TerminalPane for Wordle {
@@ -31,6 +35,9 @@ impl TerminalPane for Wordle {
         needs_redraw: &mut bool,
     ) {
         let code = key_event.code;
+        if self.guesses.last() == Some(&self.correct_word) {
+            return;
+        }
         if (KeyCode::Char('a')..=KeyCode::Char('z')).contains(&code) {
             if self.current_guess.len() < 5 {
                 self.current_guess += &code.as_char().unwrap().to_string();
@@ -60,7 +67,10 @@ impl TerminalPane for Wordle {
 impl StatefulWidget for &Wordle {
     type State = Focus;
     fn render(self, area: Rect, buf: &mut Buffer, focus: &mut Focus) {
-        make_block(*focus == Focus::Pane, 2, "Wordle").render(area, buf);
+        make_block(*focus == Focus::Pane)
+            .title_top(key_label("2", "Wordle").centered())
+            .title_top(key_label("Esc", "Go Back").left_aligned())
+            .render(area, buf);
 
         let game_area = area.centered(
             Constraint::Length(WORD_LENGTH * 3),

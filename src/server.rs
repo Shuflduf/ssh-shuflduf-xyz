@@ -1,7 +1,11 @@
 use std::{collections::HashMap, sync::Arc};
 
 use color_eyre::eyre::Result;
-use crossterm::event::{KeyCode, KeyModifiers};
+use crossterm::{
+    ExecutableCommand,
+    event::{KeyCode, KeyModifiers},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen},
+};
 use ratatui::{
     Terminal, TerminalOptions, Viewport, backend::CrosstermBackend, layout::Rect, widgets::Clear,
 };
@@ -177,6 +181,7 @@ async fn client_event_loop(
     let mut server_command_receiver = server_state.broadcast_sender.subscribe();
     let mut client_state = server_state.client_state().await;
     let (mut needs_redraw, mut clear_screen) = (true, true);
+    let _ = terminal.backend_mut().execute(EnterAlternateScreen);
 
     loop {
         tokio::select! {
@@ -206,6 +211,7 @@ async fn client_event_loop(
         }
 
         if client_state.exiting {
+            let _ = terminal.backend_mut().execute(LeaveAlternateScreen);
             let _ = client_channel.close().await;
             break;
         }
