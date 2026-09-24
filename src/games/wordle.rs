@@ -100,8 +100,16 @@ impl StatefulWidget for &Wordle {
         .flex(Flex::SpaceBetween)
         .split(combined);
 
+        let right_side = Layout::vertical([
+            Constraint::Length(keyboard_area.height),
+            Constraint::Length(3),
+        ])
+        .flex(Flex::SpaceEvenly)
+        .split(layout[1]);
         let keyboard_layout =
-            Layout::vertical([Constraint::Length(3); KEYBOARD.len()]).split(layout[1]);
+            Layout::vertical([Constraint::Length(3); KEYBOARD.len()]).split(right_side[0]);
+        let correct_word_layout =
+            Layout::horizontal([Constraint::Length(3); WORD_LENGTH as usize]).split(right_side[1]);
 
         let rows = Layout::vertical([Constraint::Length(3); GUESS_COUNT as usize]).split(layout[0]);
         for (row_idx, row_area) in rows.iter().enumerate() {
@@ -150,6 +158,15 @@ impl StatefulWidget for &Wordle {
                     .copied()
                     .unwrap_or((' ', (SCHEME.surface, SCHEME.text)));
                 Wordle::letter_cell(c, bg, fg).render(*col_area, buf);
+            }
+        }
+
+        if self.guesses.len() == GUESS_COUNT.into()
+            && self.guesses.last() != Some(&self.correct_word)
+        {
+            for (i, c) in self.correct_word.chars().enumerate() {
+                Wordle::letter_cell(c, SCHEME.wordle_correct, SCHEME.surface_secondary)
+                    .render(correct_word_layout[i], buf);
             }
         }
     }
