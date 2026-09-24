@@ -69,15 +69,30 @@ pub enum Game {
     Tetris,
 }
 
+#[derive(Clone, Copy)]
+pub enum WordleLetter {
+    Correct,
+    Hint,
+    Incorrect,
+    Unknown,
+}
+
 pub struct Wordle {
     pub correct_word: String,
     pub guesses: Vec<String>,
     pub current_guess: String,
 }
 
+pub struct Snake {
+    pub current_dir: (i8, i8),
+    pub tiles: Vec<(i8, i8)>,
+    pub fruit_pos: (i8, i8),
+}
+
 #[derive(Default)]
 pub struct Games {
     pub wordle: Option<Wordle>,
+    pub snake: Option<Snake>,
 
     pub focused_game: Game,
     pub active_game: Option<Game>,
@@ -102,9 +117,19 @@ pub struct ColourScheme {
     pub text_secondary: Color,
     pub keys: Color,
     pub accent: Color,
+
     pub wordle_correct: Color,
-    pub wordle_incorrect: Color,
+    pub wordle_correct_text: Color,
     pub wordle_hint: Color,
+    pub wordle_hint_text: Color,
+    pub wordle_incorrect: Color,
+    pub wordle_incorrect_text: Color,
+    pub wordle_unknown: Color,
+    pub wordle_unknown_text: Color,
+
+    pub snake_body: Color,
+    pub snake_head: Color,
+    pub snake_fruit: Color,
 }
 
 // server stuff

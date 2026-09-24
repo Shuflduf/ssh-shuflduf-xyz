@@ -3,7 +3,7 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Flex, Layout, Rect},
-    style::{Color, Stylize},
+    style::Stylize,
     text::Line,
     widgets::{Paragraph, StatefulWidget, Widget},
 };
@@ -11,7 +11,7 @@ use ratatui::{
 use crate::{
     app::{TerminalPane, key_label, make_block},
     colours::SCHEME,
-    types::{Focus, MainPane, ServerState, Wordle},
+    types::{Focus, MainPane, ServerState, Wordle, WordleLetter},
 };
 
 const WORD_LENGTH: u16 = 5;
@@ -129,9 +129,9 @@ impl StatefulWidget for &Wordle {
                         (
                             c,
                             if horse {
-                                (SCHEME.wordle_correct, SCHEME.surface_secondary)
+                                WordleLetter::Correct
                             } else {
-                                self.color_at(pos, c, &mut remaining_letters)
+                                self.letter_at(pos, c, &mut remaining_letters)
                             },
                         )
                     })
@@ -139,18 +139,17 @@ impl StatefulWidget for &Wordle {
             } else if row_idx == self.guesses.len() {
                 self.current_guess
                     .chars()
-                    .map(|c| (c, (SCHEME.surface_secondary, SCHEME.text)))
+                    .map(|c| (c, WordleLetter::Unknown))
                     .collect()
             } else {
                 vec![]
             };
 
             for (col_idx, col_area) in cols.iter().enumerate() {
-                let (c, (bg, fg)) = letters
+                let (c, letter_type) = letters
                     .get(col_idx)
-                    .copied()
-                    .unwrap_or((' ', (SCHEME.surface, SCHEME.text)));
-                Wordle::letter_cell(c, bg, fg).render(*col_area, buf);
+                    .unwrap_or(&(' ', WordleLetter::Unknown));
+                Wordle::letter_cell(*c, *letter_type).render(*col_area, buf);
             }
         }
 
@@ -162,7 +161,7 @@ impl StatefulWidget for &Wordle {
             } else {
                 &self.correct_word
             };
-            let letters: Vec<(char, (Color, Color))> = {
+            let letters: Vec<(char, WordleLetter)> = {
                 KEYBOARD[row_idx]
                     .iter()
                     .map(|&c| (c, self.keyboard_colour(c, word)))
@@ -170,11 +169,10 @@ impl StatefulWidget for &Wordle {
             };
 
             for (col_idx, col_area) in cols.iter().enumerate() {
-                let (c, (bg, fg)) = letters
+                let (c, letter_type) = letters
                     .get(col_idx)
-                    .copied()
-                    .unwrap_or((' ', (SCHEME.surface, SCHEME.text)));
-                Wordle::letter_cell(c, bg, fg).render(*col_area, buf);
+                    .unwrap_or(&(' ', WordleLetter::Unknown));
+                Wordle::letter_cell(*c, *letter_type).render(*col_area, buf);
             }
         }
 
@@ -187,8 +185,7 @@ impl StatefulWidget for &Wordle {
                 &self.correct_word
             };
             for (i, c) in word.chars().enumerate() {
-                Wordle::letter_cell(c, SCHEME.wordle_correct, SCHEME.surface_secondary)
-                    .render(correct_word_layout[i], buf);
+                Wordle::letter_cell(c, WordleLetter::Correct).render(correct_word_layout[i], buf);
             }
         }
     }
@@ -205,23 +202,23 @@ impl Wordle {
         }
     }
 
-    fn color_at(&self, pos: usize, c: char, remaining: &mut [char]) -> (Color, Color) {
+    fn letter_at(&self, pos: usize, c: char, remaining: &mut [char]) -> WordleLetter {
         if remaining[pos] == c {
             remaining[pos] = ' ';
-            (SCHEME.wordle_correct, SCHEME.surface_secondary)
+            WordleLetter::Correct
         } else if remaining.contains(&c) {
-            remaining[pos] = ' ';
-            (SCHEME.wordle_hint, SCHEME.surface_secondary)
+            remaining[remaining.iter().position(|&letter| letter == c).unwrap()] = ' ';
+            WordleLetter::Hint
         } else {
-            (SCHEME.wordle_incorrect, SCHEME.text)
+            WordleLetter::Incorrect
         }
     }
 
-    fn keyboard_colour(&self, c: char, word: &str) -> (Color, Color) {
+    fn keyboard_colour(&self, c: char, word: &str) -> WordleLetter {
         for guess in self.guesses.clone() {
             for (i, guess_c) in guess.chars().enumerate() {
                 if c == guess_c && word.chars().collect::<Vec<char>>()[i] == guess_c {
-                    return (SCHEME.wordle_correct, SCHEME.surface_secondary);
+                    return WordleLetter::Correct;
                 }
             }
         }
@@ -229,32 +226,42 @@ impl Wordle {
         for guess in self.guesses.clone() {
             for guess_c in guess.chars() {
                 if c == guess_c && word.chars().collect::<Vec<char>>().contains(&guess_c) {
-                    return (SCHEME.wordle_hint, SCHEME.surface_secondary);
+                    return WordleLetter::Hint;
                 }
             }
         }
 
         for guess in self.guesses.clone() {
             if guess.chars().collect::<Vec<char>>().contains(&c) {
-                return (SCHEME.wordle_incorrect, SCHEME.text);
+                return WordleLetter::Incorrect;
             }
         }
 
-        (SCHEME.surface_secondary, SCHEME.text)
+        WordleLetter::Unknown
     }
 
     fn horse(&self) -> bool {
         self.guesses == ["horse"].repeat(GUESS_COUNT.into())
     }
 
-    fn letter_cell(c: char, bg: Color, fg: Color) -> Paragraph<'static> {
+    fn letter_cell(c: char, letter_type: WordleLetter) -> Paragraph<'static> {
         Paragraph::new(vec![
             Line::raw("   "),
             Line::raw(format!(" {} ", c.to_ascii_uppercase())),
             Line::raw("   "),
         ])
-        .bg(bg)
-        .fg(fg)
+        .bg(match letter_type {
+            WordleLetter::Correct => SCHEME.wordle_correct,
+            WordleLetter::Hint => SCHEME.wordle_hint,
+            WordleLetter::Incorrect => SCHEME.wordle_incorrect,
+            WordleLetter::Unknown => SCHEME.wordle_unknown,
+        })
+        .fg(match letter_type {
+            WordleLetter::Correct => SCHEME.wordle_correct_text,
+            WordleLetter::Hint => SCHEME.wordle_hint_text,
+            WordleLetter::Incorrect => SCHEME.wordle_incorrect_text,
+            WordleLetter::Unknown => SCHEME.wordle_unknown_text,
+        })
     }
 
     fn allowed_list() -> Vec<&'static str> {

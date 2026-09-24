@@ -13,7 +13,7 @@ use strum::{EnumCount, EnumProperty, IntoEnumIterator, VariantArray};
 use crate::{
     app::{TerminalPane, border_col, key_label, make_block},
     colours::SCHEME,
-    types::{Focus, Game, Games, MainPane, ServerState, Wordle},
+    types::{Focus, Game, Games, MainPane, ServerState, Snake, Wordle},
 };
 
 #[async_trait]
@@ -34,6 +34,13 @@ impl TerminalPane for Games {
             match game {
                 Game::Wordle => {
                     self.wordle
+                        .as_mut()
+                        .unwrap()
+                        .handle_key(key_event, current_pane, focus, server_state, needs_redraw)
+                        .await;
+                }
+                Game::Snake => {
+                    self.snake
                         .as_mut()
                         .unwrap()
                         .handle_key(key_event, current_pane, focus, server_state, needs_redraw)
@@ -69,6 +76,11 @@ impl TerminalPane for Games {
                                 self.wordle = Some(Wordle::make_game());
                             }
                         }
+                        Game::Snake => {
+                            if self.snake.is_none() {
+                                self.snake = Some(Snake::make_game());
+                            }
+                        }
                         _ => todo!(),
                     }
                     self.active_game = Some(self.focused_game);
@@ -85,6 +97,7 @@ impl StatefulWidget for &Games {
     fn render(self, area: Rect, buf: &mut Buffer, focus: &mut Focus) {
         match self.active_game {
             Some(Game::Wordle) => self.wordle.as_ref().unwrap().render(area, buf, focus),
+            Some(Game::Snake) => self.snake.as_ref().unwrap().render(area, buf, focus),
             Some(_) => todo!(),
             None => render_game_list(self, area, buf, focus),
         }
