@@ -1,14 +1,12 @@
-use std::cell::OnceCell;
 
 use async_trait::async_trait;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
-    style::{Color, Style, Stylize},
-    symbols::border,
+    style::{Color, Stylize},
     text::Line,
-    widgets::{Block, BorderType, Paragraph, StatefulWidget, Widget},
+    widgets::{Paragraph, StatefulWidget, Widget},
 };
 
 use crate::{
@@ -45,12 +43,6 @@ impl TerminalPane for Wordle {
                     *needs_redraw = true;
                 }
                 KeyCode::Enter => {
-                    println!(
-                        "{} {} {}",
-                        &self.current_guess,
-                        &self.current_guess.len(),
-                        Wordle::allowed_list().contains(&self.current_guess.as_str().trim())
-                    );
                     if self.current_guess.len() == WORD_LENGTH as usize
                         && Wordle::allowed_list().contains(&self.current_guess.as_str().trim())
                     {
@@ -106,9 +98,10 @@ impl StatefulWidget for &Wordle {
 
 impl Wordle {
     pub fn make_game() -> Self {
+        let words = Wordle::answer_list();
         Self {
-            // correct_word: words_list[rand::random_range(0..words_list.len())].to_string(),
-            correct_word: "horse".to_string(),
+            correct_word: words[rand::random_range(0..words.len())].to_string(),
+            // correct_word: "horse".to_string(),
             guesses: vec![],
             current_guess: String::new(),
         }
