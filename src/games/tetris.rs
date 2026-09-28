@@ -7,6 +7,7 @@ use ratatui::{
     style::{Color, Stylize},
     widgets::{Block, StatefulWidget, Widget},
 };
+use russh::keys::ssh_key::sec1::der::Tag::TeletexString;
 use serde::Deserialize;
 
 use crate::{
@@ -132,6 +133,14 @@ impl Tetris {
         bag
     }
 
+    fn kick_index(before: usize, after: usize) -> usize {
+        if after == (before + 1) % 4 {
+            return before * 2;
+        } else {
+            return (before * 2 + 7) % 8;
+        }
+    }
+
     fn try_move(&mut self, dir: (i8, i8)) -> bool {
         let test_pos = (self.pos.0 + dir.0, self.pos.1 + dir.1);
         for tile in &self.table.pieces[self.index][self.rot] {
@@ -151,19 +160,29 @@ impl Tetris {
 
     fn try_rotate(&mut self, dir: usize) -> bool {
         let test_rot = (self.rot + dir) % 4;
-        for tile in &self.table.pieces[self.index][test_rot] {
-            let tile_pos = (self.pos.0 + tile.0, self.pos.1 + tile.1);
-            if tile_pos.0 < 0
-                || tile_pos.1 < 0
-                || tile_pos.0 >= BOARD_SIZE.0
-                || tile_pos.1 >= BOARD_SIZE.1
-                || self.board[tile_pos.0 as usize][tile_pos.1 as usize].is_some()
-            {
-                return false;
+
+        'outer: for kick in [(0, 0)]
+            .into_iter()
+            .chain(self.table.kicks[Tetris::kick_index(self.rot, test_rot)].clone())
+        {
+            println!("{kick:?}");
+            for tile in &self.table.pieces[self.index][test_rot] {
+                let tile_pos = (self.pos.0 + tile.0 + kick.0, self.pos.1 + tile.1 + kick.1);
+                if tile_pos.0 < 0
+                    || tile_pos.1 < 0
+                    || tile_pos.0 >= BOARD_SIZE.0
+                    || tile_pos.1 >= BOARD_SIZE.1
+                    || self.board[tile_pos.0 as usize][tile_pos.1 as usize].is_some()
+                {
+                    continue 'outer;
+                }
             }
+            self.rot = test_rot;
+            self.pos.0 += kick.0;
+            self.pos.1 += kick.1;
+            return true;
         }
-        self.rot = test_rot;
-        true
+        false
     }
 
     fn apply_gravity(&mut self) -> bool {
