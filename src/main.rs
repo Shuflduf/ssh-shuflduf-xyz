@@ -2,6 +2,7 @@ use crate::types::AppServer;
 
 pub mod app;
 mod colours;
+mod extra;
 mod games;
 mod input;
 mod server;

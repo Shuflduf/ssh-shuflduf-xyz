@@ -28,12 +28,14 @@ pub trait TerminalPane: Send {
         server_state: &ServerState,
         needs_redraw: &mut bool,
     );
+
+    async fn tick(&mut self, needs_redraw: &mut bool) {}
 }
 
 impl ClientState {
     pub fn apply_command(&mut self, command: &ServerMessage) {
         match command {
-            ServerMessage::Increment => self.counter.count += 1,
+            ServerMessage::CounterIncrement => self.counter.count += 1,
         }
     }
 

@@ -104,6 +104,17 @@ impl StatefulWidget for &Games {
     }
 }
 
+impl Games {
+    pub async fn tick(&mut self, needs_redraw: &mut bool) {
+        match self.active_game {
+            Some(Game::Snake) => {
+                let _ = self.snake.as_mut().unwrap().tick(needs_redraw).await;
+            }
+            _ => {}
+        }
+    }
+}
+
 fn render_game_list(games: &Games, area: Rect, buf: &mut Buffer, focus: &mut Focus) {
     let list = Layout::vertical([Constraint::Length(3); Game::COUNT]).margin(2);
     let areas = area.layout_vec(&list);

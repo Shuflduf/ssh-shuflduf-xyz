@@ -45,7 +45,9 @@ impl TerminalPane for Counter {
     ) {
         if key_event.code == KeyCode::Enter {
             *server_state.current_value.lock().await += 1;
-            let _ = server_state.broadcast_sender.send(ServerMessage::Increment);
+            let _ = server_state
+                .broadcast_sender
+                .send(ServerMessage::CounterIncrement);
             *needs_redraw = true;
         }
     }

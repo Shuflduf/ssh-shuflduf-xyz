@@ -1,5 +1,6 @@
 use async_trait::async_trait;
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use rand::random_range;
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
@@ -10,10 +11,12 @@ use ratatui::{
 use crate::{
     app::{TerminalPane, key_label, make_block},
     colours::SCHEME,
+    extra::RemoveFirst,
     types::{Focus, MainPane, ServerState, Snake},
 };
 
 const BOARD_SIZE: i8 = 13;
+const MOVE_TIME: u8 = 20;
 
 #[async_trait]
 impl TerminalPane for Snake {
@@ -23,11 +26,38 @@ impl TerminalPane for Snake {
         _current_pane: &mut MainPane,
         _focus: &mut Focus,
         _server_state: &ServerState,
-        _needs_redraw: &mut bool,
+        needs_redraw: &mut bool,
     ) {
+        if key_event.code == KeyCode::Char('r')
+            && key_event.modifiers.contains(KeyModifiers::CONTROL)
+        {
+            *self = Snake::make_game();
+            *needs_redraw = true;
+            return;
+        }
         match key_event.code {
-            KeyCode::Char('w') => self.current_dir = (0, -1),
+            KeyCode::Char('w') => self.queue_next_dir((0, -1)),
+            KeyCode::Char('a') => self.queue_next_dir((-1, 0)),
+            KeyCode::Char('s') => self.queue_next_dir((0, 1)),
+            KeyCode::Char('d') => self.queue_next_dir((1, 0)),
             _ => {}
+        }
+    }
+
+    async fn tick(&mut self, needs_redraw: &mut bool) {
+        if !self.alive() {
+            return;
+        }
+        self.move_timer -= 1;
+        if self.move_timer == 0 {
+            if let Some(next) = self.queued_dirs.pop_first() {
+                self.current_dir = next;
+            }
+            self.move_timer = MOVE_TIME;
+            self.proceed();
+            // if self.alive() {
+            *needs_redraw = true;
+            // }
         }
     }
 }
@@ -76,8 +106,58 @@ impl Snake {
     pub fn make_game() -> Snake {
         Snake {
             current_dir: (1, 0),
+            queued_dirs: vec![],
             tiles: vec![(3, 6), (2, 6), (1, 6)],
             fruit_pos: (8, 6),
+            move_timer: MOVE_TIME,
         }
+    }
+
+    fn proceed(&mut self) {
+        let last_pos = self.tiles.last().unwrap().clone();
+        for i in (1..self.tiles.len()).rev() {
+            self.tiles[i] = self.tiles[i - 1]
+        }
+        self.tiles[0].0 += self.current_dir.0;
+        self.tiles[0].1 += self.current_dir.1;
+
+        if self.tiles[0] == self.fruit_pos {
+            self.tiles.push(last_pos);
+            self.place_new_fruit();
+        }
+    }
+
+    fn place_new_fruit(&mut self) {
+        loop {
+            let test_pos = (random_range(0..BOARD_SIZE), random_range(0..BOARD_SIZE));
+            if !self.tiles.contains(&test_pos) {
+                self.fruit_pos = test_pos;
+                break;
+            }
+        }
+    }
+
+    fn queue_next_dir(&mut self, dir: (i8, i8)) {
+        let opp_dir = match dir {
+            (-1, 0) => (1, 0),
+            (1, 0) => (-1, 0),
+            (0, 1) => (0, -1),
+            (0, -1) => (0, 1),
+            _ => unreachable!(),
+        };
+        if &opp_dir != self.queued_dirs.last().unwrap_or(&self.current_dir) {
+            self.queued_dirs.push(dir);
+        }
+    }
+
+    fn alive(&self) -> bool {
+        let head = self.tiles[0];
+        if head.0 > BOARD_SIZE || head.1 > BOARD_SIZE || head.0 < 0 || head.1 < 0 {
+            return false;
+        }
+        if self.tiles[1..].contains(&head) {
+            return false;
+        }
+        true
     }
 }

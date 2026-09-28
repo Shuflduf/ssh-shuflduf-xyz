@@ -1,4 +1,4 @@
-use std::{collections::HashMap, env, fs, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, env, fs, path::PathBuf, sync::Arc, time::Duration};
 
 use color_eyre::eyre::Result;
 use crossterm::{
@@ -20,8 +20,8 @@ use tokio::sync::{
 };
 
 use crate::types::{
-    AppServer, ClientEvent, ClientMessage, ClientState, Counter, Focus, InputParser, ServerState,
-    SshTerminal, TerminalHandle,
+    AppServer, ClientEvent, ClientMessage, ClientState, Counter, Focus, InputParser, ServerMessage,
+    ServerState, SshTerminal, TerminalHandle,
 };
 
 impl AppServer {
@@ -34,6 +34,16 @@ impl AppServer {
             nodelay: true,
             ..Default::default()
         };
+
+        // let server_state = self.server_state.clone();
+        // tokio::spawn(async move {
+        //     let mut interval = tokio::time::interval(Duration::from_millis(10));
+        //     interval.tick().await;
+        //     loop {
+        //         interval.tick().await;
+        //         let _ = server_state.broadcast_sender.send(ServerMessage::Tick);
+        //     }
+        // });
 
         self.run_on_address(Arc::new(config), ("0.0.0.0", 2222))
             .await?;
@@ -179,6 +189,8 @@ async fn client_event_loop(
     let mut client_state = server_state.client_state().await;
     let (mut needs_redraw, mut clear_screen) = (true, true);
     let _ = terminal.backend_mut().execute(EnterAlternateScreen);
+    let mut tick = tokio::time::interval(Duration::from_millis(10));
+    tick.tick().await;
 
     loop {
         tokio::select! {
@@ -198,6 +210,7 @@ async fn client_event_loop(
                 }
                 None => break,
             },
+
             server_command = server_command_receiver.recv() => if let Ok(command) = server_command {
                 client_state.apply_command(&command);
                 needs_redraw = true;
@@ -205,6 +218,10 @@ async fn client_event_loop(
                 client_state = server_state.client_state().await;
                 needs_redraw = true;
             },
+
+            _ = tick.tick() => {
+                client_state.games.tick(&mut needs_redraw).await;
+            }
         }
 
         if client_state.exiting {
@@ -301,15 +318,22 @@ impl ServerState {
 }
 
 fn load_host_keys() -> Result<Vec<PrivateKey>> {
-    let dir = env::var_os("SSH_HOST_KEYS_DIR").map_or_else(|| {
-            env::var_os("XDG_DATA_HOME").map_or_else(|| {
-                    env::var_os("HOME")
-                        .map(PathBuf::from)
-                        .unwrap_or_default()
-                        .join(".local/share")
-                }, PathBuf::from)
+    let dir = env::var_os("SSH_HOST_KEYS_DIR").map_or_else(
+        || {
+            env::var_os("XDG_DATA_HOME")
+                .map_or_else(
+                    || {
+                        env::var_os("HOME")
+                            .map(PathBuf::from)
+                            .unwrap_or_default()
+                            .join(".local/share")
+                    },
+                    PathBuf::from,
+                )
                 .join(env!("CARGO_PKG_NAME"))
-        }, PathBuf::from);
+        },
+        PathBuf::from,
+    );
     fs::create_dir_all(&dir)?;
     let host_key = dir.join("ssh_host_ed25519_key");
     if !host_key.exists() {

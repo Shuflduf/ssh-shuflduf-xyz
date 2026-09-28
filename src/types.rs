@@ -85,8 +85,10 @@ pub struct Wordle {
 
 pub struct Snake {
     pub current_dir: (i8, i8),
+    pub queued_dirs: Vec<(i8, i8)>,
     pub tiles: Vec<(i8, i8)>,
     pub fruit_pos: (i8, i8),
+    pub move_timer: u8,
 }
 
 #[derive(Default)]
@@ -136,7 +138,7 @@ pub struct ColourScheme {
 
 #[derive(Clone)]
 pub enum ServerMessage {
-    Increment,
+    CounterIncrement,
 }
 
 #[derive(Clone)]
