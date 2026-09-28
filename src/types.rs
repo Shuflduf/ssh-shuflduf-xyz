@@ -104,6 +104,8 @@ pub struct Tetris {
     pub pos: (i8, i8),
     pub rot: u8,
     pub gravity_timer: u8,
+    pub bag: Vec<u8>,
+    pub board: [[Option<u8>; 20]; 10],
     pub table: SRSTable,
 }
 

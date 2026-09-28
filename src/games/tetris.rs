@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use crossterm::event::{KeyCode, KeyEvent};
+use rand::seq::SliceRandom;
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
@@ -13,7 +14,7 @@ use crate::{
     types::{Focus, MainPane, ServerState, Tetris},
 };
 
-const BOARD_SIZE: (i8, i8) = (10, 20);
+pub const BOARD_SIZE: (i8, i8) = (10, 20);
 const GRAVITY_TIME: u8 = 50;
 
 #[async_trait]
@@ -29,6 +30,7 @@ impl TerminalPane for Tetris {
         match key_event.code {
             KeyCode::Char('a') => *needs_redraw = self.try_move((-1, 0)),
             KeyCode::Char('d') => *needs_redraw = self.try_move((1, 0)),
+            KeyCode::Char('w') => *needs_redraw = self.apply_gravity(),
             KeyCode::Left => *needs_redraw = self.try_rotate(3),
             KeyCode::Right => *needs_redraw = self.try_rotate(1),
             _ => {}
@@ -38,8 +40,7 @@ impl TerminalPane for Tetris {
     async fn tick(&mut self, needs_redraw: &mut bool) {
         self.gravity_timer -= 1;
         if self.gravity_timer == 0 {
-            *needs_redraw = self.try_move((0, 1));
-            self.gravity_timer = GRAVITY_TIME;
+            *needs_redraw = self.apply_gravity();
         }
     }
 }
@@ -75,6 +76,10 @@ impl StatefulWidget for &Tetris {
                     Block::new()
                         .bg(Tetris::get_col(self.index))
                         .render(*cell_area, buf);
+                } else if let Some(idx) = self.board[pos.0 as usize][pos.1 as usize] {
+                    Block::new()
+                        .bg(Tetris::get_col(idx))
+                        .render(*cell_area, buf);
                 }
             }
         }
@@ -83,13 +88,22 @@ impl StatefulWidget for &Tetris {
 
 impl Tetris {
     pub fn make_game() -> Tetris {
+        let mut bag = Tetris::new_bag();
         Tetris {
-            index: 1,
+            index: bag.pop().unwrap(),
             pos: (3, 0),
             rot: 0,
             gravity_timer: GRAVITY_TIME,
+            bag,
+            board: [[None; 20]; 10],
             table: serde_json::from_str(include_str!("tetris_srs.json")).unwrap(),
         }
+    }
+
+    fn new_bag() -> Vec<u8> {
+        let mut bag = vec![0, 1, 2, 3, 4, 5, 6];
+        bag.shuffle(&mut rand::rng());
+        bag
     }
 
     fn try_move(&mut self, dir: (i8, i8)) -> bool {
@@ -122,6 +136,29 @@ impl Tetris {
         }
         self.rot = test_rot;
         true
+    }
+
+    fn apply_gravity(&mut self) -> bool {
+        self.gravity_timer = GRAVITY_TIME;
+        let success = self.try_move((0, 1));
+        if !success {
+            self.place_piece();
+
+            self.index = self.bag.pop().unwrap_or_else(|| {
+                self.bag = Tetris::new_bag();
+                self.bag.pop().unwrap()
+            });
+            self.pos = (3, 0);
+            self.rot = 0;
+        }
+        true
+    }
+
+    fn place_piece(&mut self) {
+        for tile in &self.table.pieces[self.index as usize][self.rot as usize] {
+            let tile_pos = (self.pos.0 + tile.0, self.pos.1 + tile.1);
+            self.board[tile_pos.0 as usize][tile_pos.1 as usize] = Some(self.index);
+        }
     }
 
     fn get_col(index: u8) -> Color {
