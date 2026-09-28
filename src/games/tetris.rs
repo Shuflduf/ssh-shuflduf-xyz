@@ -29,6 +29,8 @@ impl TerminalPane for Tetris {
         match key_event.code {
             KeyCode::Char('a') => *needs_redraw = self.try_move((-1, 0)),
             KeyCode::Char('d') => *needs_redraw = self.try_move((1, 0)),
+            KeyCode::Left => *needs_redraw = self.try_rotate(3),
+            KeyCode::Right => *needs_redraw = self.try_rotate(1),
             _ => {}
         }
     }
@@ -91,8 +93,34 @@ impl Tetris {
     }
 
     fn try_move(&mut self, dir: (i8, i8)) -> bool {
-        self.pos.0 += dir.0;
-        self.pos.1 += dir.1;
+        let test_pos = (self.pos.0 + dir.0, self.pos.1 + dir.1);
+        for tile in &self.table.pieces[self.index as usize][self.rot as usize] {
+            let tile_pos = (test_pos.0 + tile.0, test_pos.1 + tile.1);
+            if tile_pos.0 < 0
+                || tile_pos.1 < 0
+                || tile_pos.0 >= BOARD_SIZE.0
+                || tile_pos.1 >= BOARD_SIZE.1
+            {
+                return false;
+            }
+        }
+        self.pos = test_pos;
+        true
+    }
+
+    fn try_rotate(&mut self, dir: u8) -> bool {
+        let test_rot = (self.rot + dir) % 4;
+        for tile in &self.table.pieces[self.index as usize][test_rot as usize] {
+            let tile_pos = (self.pos.0 + tile.0, self.pos.1 + tile.1);
+            if tile_pos.0 < 0
+                || tile_pos.1 < 0
+                || tile_pos.0 >= BOARD_SIZE.0
+                || tile_pos.1 >= BOARD_SIZE.1
+            {
+                return false;
+            }
+        }
+        self.rot = test_rot;
         true
     }
 
