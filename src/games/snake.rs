@@ -114,7 +114,7 @@ impl Snake {
     }
 
     fn proceed(&mut self) {
-        let last_pos = self.tiles.last().unwrap().clone();
+        let last_pos = *self.tiles.last().unwrap();
         for i in (1..self.tiles.len()).rev() {
             self.tiles[i] = self.tiles[i - 1]
         }

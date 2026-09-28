@@ -20,7 +20,7 @@ use tokio::sync::{
 };
 
 use crate::types::{
-    AppServer, ClientEvent, ClientMessage, ClientState, Counter, Focus, InputParser, ServerMessage,
+    AppServer, ClientEvent, ClientMessage, ClientState, Counter, Focus, InputParser,
     ServerState, SshTerminal, TerminalHandle,
 };
 

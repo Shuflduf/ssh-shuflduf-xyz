@@ -13,7 +13,7 @@ use strum::{EnumCount, EnumProperty, IntoEnumIterator, VariantArray};
 use crate::{
     app::{TerminalPane, border_col, key_label, make_block},
     colours::SCHEME,
-    types::{Focus, Game, Games, MainPane, ServerState, Snake, Wordle},
+    types::{Focus, Game, Games, MainPane, ServerState, Snake, Tetris, Wordle},
 };
 
 #[async_trait]
@@ -46,7 +46,13 @@ impl TerminalPane for Games {
                         .handle_key(key_event, current_pane, focus, server_state, needs_redraw)
                         .await;
                 }
-                _ => todo!(),
+                Game::Tetris => {
+                    self.tetris
+                        .as_mut()
+                        .unwrap()
+                        .handle_key(key_event, current_pane, focus, server_state, needs_redraw)
+                        .await;
+                }
             }
         } else {
             match key_event.code {
@@ -81,7 +87,11 @@ impl TerminalPane for Games {
                                 self.snake = Some(Snake::make_game());
                             }
                         }
-                        _ => todo!(),
+                        Game::Tetris => {
+                            if self.tetris.is_none() {
+                                self.tetris = Some(Tetris::make_game());
+                            }
+                        }
                     }
                     self.active_game = Some(self.focused_game);
                     *needs_redraw = true;
@@ -98,7 +108,7 @@ impl StatefulWidget for &Games {
         match self.active_game {
             Some(Game::Wordle) => self.wordle.as_ref().unwrap().render(area, buf, focus),
             Some(Game::Snake) => self.snake.as_ref().unwrap().render(area, buf, focus),
-            Some(_) => todo!(),
+            Some(Game::Tetris) => self.tetris.as_ref().unwrap().render(area, buf, focus),
             None => render_game_list(self, area, buf, focus),
         }
     }
@@ -109,6 +119,9 @@ impl Games {
         match self.active_game {
             Some(Game::Snake) => {
                 let _ = self.snake.as_mut().unwrap().tick(needs_redraw).await;
+            }
+            Some(Game::Tetris) => {
+                let _ = self.tetris.as_mut().unwrap().tick(needs_redraw).await;
             }
             _ => {}
         }

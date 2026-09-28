@@ -23,4 +23,12 @@ pub const CATPPUCCIN: ColourScheme = ColourScheme {
     snake_body: Color::Rgb(166, 227, 161),
     snake_head: Color::Rgb(137, 180, 250),
     snake_fruit: Color::Rgb(243, 139, 168),
+
+    tetris_red: Color::Rgb(243, 139, 168),
+    tetris_orange: Color::Rgb(250, 179, 135),
+    tetris_yellow: Color::Rgb(249, 226, 175),
+    tetris_green: Color::Rgb(166, 227, 161),
+    tetris_cyan: Color::Rgb(137, 220, 235),
+    tetris_blue: Color::Rgb(137, 180, 250),
+    tetris_pink: Color::Rgb(245, 194, 231),
 };

@@ -2,6 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use crossterm::event::KeyEvent;
 use ratatui::{Terminal, backend::CrosstermBackend, layout::Rect, style::Color};
+use serde::Deserialize;
 use strum::{Display, EnumCount, EnumIter, EnumProperty, VariantArray};
 use tokio::{
     sync::{Mutex, broadcast, mpsc::UnboundedSender},
@@ -91,10 +92,26 @@ pub struct Snake {
     pub move_timer: u8,
 }
 
+#[derive(Deserialize)]
+pub struct SRSTable {
+    pub pieces: Vec<Vec<Vec<(i8, i8)>>>,
+    pub kicks: Vec<Vec<(i8, i8)>>,
+    pub kicks_i: Vec<Vec<(i8, i8)>>,
+}
+
+pub struct Tetris {
+    pub index: u8,
+    pub pos: (i8, i8),
+    pub rot: u8,
+    pub gravity_timer: u8,
+    pub table: SRSTable,
+}
+
 #[derive(Default)]
 pub struct Games {
     pub wordle: Option<Wordle>,
     pub snake: Option<Snake>,
+    pub tetris: Option<Tetris>,
 
     pub focused_game: Game,
     pub active_game: Option<Game>,
@@ -132,6 +149,14 @@ pub struct ColourScheme {
     pub snake_body: Color,
     pub snake_head: Color,
     pub snake_fruit: Color,
+
+    pub tetris_red: Color,
+    pub tetris_orange: Color,
+    pub tetris_yellow: Color,
+    pub tetris_green: Color,
+    pub tetris_cyan: Color,
+    pub tetris_blue: Color,
+    pub tetris_pink: Color,
 }
 
 // server stuff

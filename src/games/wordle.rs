@@ -176,7 +176,7 @@ impl StatefulWidget for &Wordle {
             }
         }
 
-        if self.guesses.len() == GUESS_COUNT.into()
+        if self.guesses.len() == GUESS_COUNT as usize
             && self.guesses.last() != Some(&self.correct_word)
         {
             let word = if self.horse() {

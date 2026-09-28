@@ -29,7 +29,7 @@ pub trait TerminalPane: Send {
         needs_redraw: &mut bool,
     );
 
-    async fn tick(&mut self, needs_redraw: &mut bool) {}
+    async fn tick(&mut self, _needs_redraw: &mut bool) {}
 }
 
 impl ClientState {
