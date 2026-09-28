@@ -240,8 +240,8 @@ impl Tetris {
 
     fn hard_drop(&mut self) -> bool {
         while self.try_move((0, 1)) {}
-        self.gravity_timer = 1;
         self.place_piece();
+        self.reset_piece();
         true
     }
 
@@ -298,8 +298,6 @@ impl Tetris {
         } {
             current += 1;
         }
-        current -= 1;
-        println!("{current}");
-        current
+        current - 1
     }
 }
