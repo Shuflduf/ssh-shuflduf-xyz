@@ -107,6 +107,12 @@ impl StatefulWidget for &Tetris {
                     Block::new()
                         .bg(Tetris::get_col(idx))
                         .render(*cell_area, buf);
+                } else if self.table.pieces[self.index][self.rot]
+                    .contains(&(pos.0 - self.pos.0, pos.1 - self.ghost_y()))
+                {
+                    Block::new()
+                        .bg(SCHEME.surface_secondary)
+                        .render(*cell_area, buf);
                 }
             }
         }
@@ -138,6 +144,18 @@ impl Tetris {
             before * 2
         } else {
             (before * 2 + 7) % 8
+        }
+    }
+    fn get_col(index: usize) -> Color {
+        match index {
+            0 => SCHEME.tetris_red,
+            1 => SCHEME.tetris_orange,
+            2 => SCHEME.tetris_yellow,
+            3 => SCHEME.tetris_green,
+            4 => SCHEME.tetris_cyan,
+            5 => SCHEME.tetris_blue,
+            6 => SCHEME.tetris_pink,
+            _ => unreachable!(),
         }
     }
 
@@ -261,16 +279,27 @@ impl Tetris {
         full
     }
 
-    fn get_col(index: usize) -> Color {
-        match index {
-            0 => SCHEME.tetris_red,
-            1 => SCHEME.tetris_orange,
-            2 => SCHEME.tetris_yellow,
-            3 => SCHEME.tetris_green,
-            4 => SCHEME.tetris_cyan,
-            5 => SCHEME.tetris_blue,
-            6 => SCHEME.tetris_pink,
-            _ => unreachable!(),
+    fn ghost_y(&self) -> i8 {
+        let mut current = self.pos.1;
+        while {
+            let mut ce = true;
+            for tile in &self.table.pieces[self.index][self.rot] {
+                let tile_pos = (self.pos.0 + tile.0, tile.1 + current);
+                if tile_pos.0 < 0
+                    || tile_pos.1 < 0
+                    || tile_pos.0 >= BOARD_SIZE.0
+                    || tile_pos.1 >= BOARD_SIZE.1
+                    || self.board[tile_pos.0 as usize][tile_pos.1 as usize].is_some()
+                {
+                    ce = false;
+                }
+            }
+            ce
+        } {
+            current += 1;
         }
+        current -= 1;
+        println!("{current}");
+        current
     }
 }
