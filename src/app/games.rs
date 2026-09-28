@@ -13,7 +13,8 @@ use strum::{EnumCount, EnumProperty, IntoEnumIterator, VariantArray};
 use crate::{
     app::{TerminalPane, border_col, key_label, make_block},
     colours::SCHEME,
-    types::{Focus, Game, Games, MainPane, ServerState, Snake, Tetris, Wordle},
+    games::tetris::Tetris,
+    types::{Focus, Game, Games, MainPane, ServerState, Snake, Wordle},
 };
 
 #[async_trait]

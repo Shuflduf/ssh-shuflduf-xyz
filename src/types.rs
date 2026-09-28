@@ -2,12 +2,13 @@ use std::{collections::HashMap, sync::Arc};
 
 use crossterm::event::KeyEvent;
 use ratatui::{Terminal, backend::CrosstermBackend, layout::Rect, style::Color};
-use serde::Deserialize;
 use strum::{Display, EnumCount, EnumIter, EnumProperty, VariantArray};
 use tokio::{
     sync::{Mutex, broadcast, mpsc::UnboundedSender},
     time::Instant,
 };
+
+use crate::games::tetris::Tetris;
 
 pub type SshTerminal = Terminal<CrosstermBackend<TerminalHandle>>;
 
@@ -90,23 +91,6 @@ pub struct Snake {
     pub tiles: Vec<(i8, i8)>,
     pub fruit_pos: (i8, i8),
     pub move_timer: u8,
-}
-
-#[derive(Deserialize)]
-pub struct SRSTable {
-    pub pieces: Vec<Vec<Vec<(i8, i8)>>>,
-    pub kicks: Vec<Vec<(i8, i8)>>,
-    pub kicks_i: Vec<Vec<(i8, i8)>>,
-}
-
-pub struct Tetris {
-    pub index: u8,
-    pub pos: (i8, i8),
-    pub rot: u8,
-    pub gravity_timer: u8,
-    pub bag: Vec<u8>,
-    pub board: [[Option<u8>; 20]; 10],
-    pub table: SRSTable,
 }
 
 #[derive(Default)]

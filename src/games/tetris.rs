@@ -7,15 +7,33 @@ use ratatui::{
     style::{Color, Stylize},
     widgets::{Block, StatefulWidget, Widget},
 };
+use serde::Deserialize;
 
 use crate::{
     app::{TerminalPane, key_label, make_block},
     colours::SCHEME,
-    types::{Focus, MainPane, ServerState, Tetris},
+    types::{Focus, MainPane, ServerState},
 };
 
 pub const BOARD_SIZE: (i8, i8) = (10, 20);
 const GRAVITY_TIME: u8 = 50;
+
+#[derive(Deserialize)]
+struct SRSTable {
+    pieces: Vec<Vec<Vec<(i8, i8)>>>,
+    kicks: Vec<Vec<(i8, i8)>>,
+    kicks_i: Vec<Vec<(i8, i8)>>,
+}
+
+pub struct Tetris {
+    index: usize,
+    pos: (i8, i8),
+    rot: usize,
+    gravity_timer: u8,
+    bag: Vec<usize>,
+    board: [[Option<usize>; 20]; 10],
+    table: SRSTable,
+}
 
 #[async_trait]
 impl TerminalPane for Tetris {
@@ -72,7 +90,7 @@ impl StatefulWidget for &Tetris {
             {
                 let pos = (x as i8, y as i8);
                 let piece_pos = (pos.0 - self.pos.0, pos.1 - self.pos.1);
-                if self.table.pieces[self.index as usize][self.rot as usize].contains(&piece_pos) {
+                if self.table.pieces[self.index][self.rot].contains(&piece_pos) {
                     Block::new()
                         .bg(Tetris::get_col(self.index))
                         .render(*cell_area, buf);
@@ -100,7 +118,7 @@ impl Tetris {
         }
     }
 
-    fn new_bag() -> Vec<u8> {
+    fn new_bag() -> Vec<usize> {
         let mut bag = vec![0, 1, 2, 3, 4, 5, 6];
         bag.shuffle(&mut rand::rng());
         bag
@@ -108,12 +126,13 @@ impl Tetris {
 
     fn try_move(&mut self, dir: (i8, i8)) -> bool {
         let test_pos = (self.pos.0 + dir.0, self.pos.1 + dir.1);
-        for tile in &self.table.pieces[self.index as usize][self.rot as usize] {
+        for tile in &self.table.pieces[self.index][self.rot] {
             let tile_pos = (test_pos.0 + tile.0, test_pos.1 + tile.1);
             if tile_pos.0 < 0
                 || tile_pos.1 < 0
                 || tile_pos.0 >= BOARD_SIZE.0
                 || tile_pos.1 >= BOARD_SIZE.1
+                || self.board[tile_pos.0 as usize][tile_pos.1 as usize].is_some()
             {
                 return false;
             }
@@ -122,14 +141,15 @@ impl Tetris {
         true
     }
 
-    fn try_rotate(&mut self, dir: u8) -> bool {
+    fn try_rotate(&mut self, dir: usize) -> bool {
         let test_rot = (self.rot + dir) % 4;
-        for tile in &self.table.pieces[self.index as usize][test_rot as usize] {
+        for tile in &self.table.pieces[self.index][test_rot] {
             let tile_pos = (self.pos.0 + tile.0, self.pos.1 + tile.1);
             if tile_pos.0 < 0
                 || tile_pos.1 < 0
                 || tile_pos.0 >= BOARD_SIZE.0
                 || tile_pos.1 >= BOARD_SIZE.1
+                || self.board[tile_pos.0 as usize][tile_pos.1 as usize].is_some()
             {
                 return false;
             }
@@ -155,13 +175,40 @@ impl Tetris {
     }
 
     fn place_piece(&mut self) {
-        for tile in &self.table.pieces[self.index as usize][self.rot as usize] {
+        for tile in &self.table.pieces[self.index][self.rot] {
             let tile_pos = (self.pos.0 + tile.0, self.pos.1 + tile.1);
             self.board[tile_pos.0 as usize][tile_pos.1 as usize] = Some(self.index);
         }
+        let full = self.full_lines();
+
+        for line in &full {
+            for y in (1..=*line).rev() {
+                for x in 0..BOARD_SIZE.0 as usize {
+                    self.board[x][y] = self.board[x][y - 1];
+                }
+            }
+        }
+        if !full.is_empty() {
+            for x in 0..BOARD_SIZE.0 as usize {
+                self.board[x][0] = None;
+            }
+        }
     }
 
-    fn get_col(index: u8) -> Color {
+    fn full_lines(&self) -> Vec<usize> {
+        let mut full = vec![];
+        'outer: for y in 0..BOARD_SIZE.1 as usize {
+            for x in 0..BOARD_SIZE.0 as usize {
+                if self.board[x][y].is_none() {
+                    continue 'outer;
+                }
+            }
+            full.push(y);
+        }
+        full
+    }
+
+    fn get_col(index: usize) -> Color {
         match index {
             0 => SCHEME.tetris_red,
             1 => SCHEME.tetris_orange,
