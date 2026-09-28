@@ -7,7 +7,6 @@ use ratatui::{
     style::{Color, Stylize},
     widgets::{Block, StatefulWidget, Widget},
 };
-use russh::keys::ssh_key::sec1::der::Tag::TeletexString;
 use serde::Deserialize;
 
 use crate::{
@@ -18,6 +17,7 @@ use crate::{
 
 pub const BOARD_SIZE: (i8, i8) = (10, 20);
 const GRAVITY_TIME: u8 = 50;
+const I_PIECE: usize = 4;
 
 #[derive(Deserialize)]
 struct SRSTable {
@@ -135,9 +135,9 @@ impl Tetris {
 
     fn kick_index(before: usize, after: usize) -> usize {
         if after == (before + 1) % 4 {
-            return before * 2;
+            before * 2
         } else {
-            return (before * 2 + 7) % 8;
+            (before * 2 + 7) % 8
         }
     }
 
@@ -161,11 +161,15 @@ impl Tetris {
     fn try_rotate(&mut self, dir: usize) -> bool {
         let test_rot = (self.rot + dir) % 4;
 
+        let kick_table = if self.index == I_PIECE {
+            &self.table.kicks_i
+        } else {
+            &self.table.kicks
+        };
         'outer: for kick in [(0, 0)]
             .into_iter()
-            .chain(self.table.kicks[Tetris::kick_index(self.rot, test_rot)].clone())
+            .chain(kick_table[Tetris::kick_index(self.rot, test_rot)].clone())
         {
-            println!("{kick:?}");
             for tile in &self.table.pieces[self.index][test_rot] {
                 let tile_pos = (self.pos.0 + tile.0 + kick.0, self.pos.1 + tile.1 + kick.1);
                 if tile_pos.0 < 0
