@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use rand::seq::SliceRandom;
 use ratatui::{
     buffer::Buffer,
@@ -45,10 +45,18 @@ impl TerminalPane for Tetris {
         _server_state: &ServerState,
         needs_redraw: &mut bool,
     ) {
+        if key_event.code == KeyCode::Char('r')
+            && key_event.modifiers.contains(KeyModifiers::CONTROL)
+        {
+            *self = Tetris::make_game();
+            *needs_redraw = true;
+            return;
+        }
         match key_event.code {
             KeyCode::Char('a') => *needs_redraw = self.try_move((-1, 0)),
             KeyCode::Char('d') => *needs_redraw = self.try_move((1, 0)),
             KeyCode::Char('w') => *needs_redraw = self.apply_gravity(),
+            KeyCode::Char('s') => *needs_redraw = self.hard_drop(),
             KeyCode::Left => *needs_redraw = self.try_rotate(3),
             KeyCode::Right => *needs_redraw = self.try_rotate(1),
             _ => {}
@@ -163,14 +171,36 @@ impl Tetris {
         let success = self.try_move((0, 1));
         if !success {
             self.place_piece();
-
-            self.index = self.bag.pop().unwrap_or_else(|| {
-                self.bag = Tetris::new_bag();
-                self.bag.pop().unwrap()
-            });
-            self.pos = (3, 0);
-            self.rot = 0;
+            self.reset_piece();
         }
+        true
+    }
+
+    fn reset_piece(&mut self) {
+        self.index = self.bag.pop().unwrap_or_else(|| {
+            self.bag = Tetris::new_bag();
+            self.bag.pop().unwrap()
+        });
+        self.pos = (3, 0);
+        self.rot = 0;
+
+        let mut should_reset = false;
+        for tile in &self.table.pieces[self.index][self.rot] {
+            let tile_pos = (self.pos.0 + tile.0, self.pos.1 + tile.1);
+            if self.board[tile_pos.0 as usize][tile_pos.1 as usize].is_some() {
+                should_reset = true;
+                break;
+            }
+        }
+        if should_reset {
+            *self = Tetris::make_game()
+        }
+    }
+
+    fn hard_drop(&mut self) -> bool {
+        while self.try_move((0, 1)) {}
+        self.gravity_timer = 1;
+        self.place_piece();
         true
     }
 
