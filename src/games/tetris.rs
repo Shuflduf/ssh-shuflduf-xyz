@@ -6,7 +6,7 @@ use ratatui::{
     layout::{Constraint, Flex, Layout, Rect},
     style::{Color, Stylize},
     text::Line,
-    widgets::{Block, Paragraph, StatefulWidget, Widget},
+    widgets::{Block, StatefulWidget, Widget},
 };
 use serde::Deserialize;
 
@@ -38,6 +38,15 @@ pub struct Tetris {
     next: Vec<usize>,
     board: [[Option<usize>; 20]; 10],
     table: SRSTable,
+}
+pub struct TetrisScheme {
+    pub red: Color,
+    pub orange: Color,
+    pub yellow: Color,
+    pub green: Color,
+    pub cyan: Color,
+    pub blue: Color,
+    pub pink: Color,
 }
 
 #[async_trait]
@@ -216,13 +225,13 @@ impl Tetris {
     }
     fn get_col(index: usize) -> Color {
         match index {
-            0 => SCHEME.tetris_red,
-            1 => SCHEME.tetris_orange,
-            2 => SCHEME.tetris_yellow,
-            3 => SCHEME.tetris_green,
-            4 => SCHEME.tetris_cyan,
-            5 => SCHEME.tetris_blue,
-            6 => SCHEME.tetris_pink,
+            0 => SCHEME.tetris.red,
+            1 => SCHEME.tetris.orange,
+            2 => SCHEME.tetris.yellow,
+            3 => SCHEME.tetris.green,
+            4 => SCHEME.tetris.cyan,
+            5 => SCHEME.tetris.blue,
+            6 => SCHEME.tetris.pink,
             _ => unreachable!(),
         }
     }

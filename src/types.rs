@@ -3,12 +3,16 @@ use std::{collections::HashMap, sync::Arc};
 use crossterm::event::KeyEvent;
 use ratatui::{Terminal, backend::CrosstermBackend, layout::Rect, style::Color};
 use strum::{Display, EnumCount, EnumIter, EnumProperty, VariantArray};
-use tokio::{
-    sync::{Mutex, broadcast, mpsc::UnboundedSender},
-    time::Instant,
-};
+use tokio::sync::{Mutex, broadcast, mpsc::UnboundedSender};
 
-use crate::games::tetris::Tetris;
+use crate::{
+    app::counter::Counter,
+    games::{
+        snake::{Snake, SnakeScheme},
+        tetris::{Tetris, TetrisScheme},
+        wordle::{Wordle, WordleScheme},
+    },
+};
 
 pub type SshTerminal = Terminal<CrosstermBackend<TerminalHandle>>;
 
@@ -42,12 +46,6 @@ pub struct Sidebar {
     pub item: SidebarItem,
 }
 
-#[derive(Default)]
-pub struct Counter {
-    pub count: u32,
-    pub last_increment_time: Option<Instant>,
-}
-
 #[derive(
     Debug,
     EnumIter,
@@ -69,28 +67,6 @@ pub enum Game {
     Snake,
     #[strum(props(Description = "Place falling blocks in a stack"))]
     Tetris,
-}
-
-#[derive(Clone, Copy)]
-pub enum WordleLetter {
-    Correct,
-    Hint,
-    Incorrect,
-    Unknown,
-}
-
-pub struct Wordle {
-    pub correct_word: String,
-    pub guesses: Vec<String>,
-    pub current_guess: String,
-}
-
-pub struct Snake {
-    pub current_dir: (i8, i8),
-    pub queued_dirs: Vec<(i8, i8)>,
-    pub tiles: Vec<(i8, i8)>,
-    pub fruit_pos: (i8, i8),
-    pub move_timer: u8,
 }
 
 #[derive(Default)]
@@ -123,26 +99,9 @@ pub struct ColourScheme {
     pub keys: Color,
     pub accent: Color,
 
-    pub wordle_correct: Color,
-    pub wordle_correct_text: Color,
-    pub wordle_hint: Color,
-    pub wordle_hint_text: Color,
-    pub wordle_incorrect: Color,
-    pub wordle_incorrect_text: Color,
-    pub wordle_unknown: Color,
-    pub wordle_unknown_text: Color,
-
-    pub snake_body: Color,
-    pub snake_head: Color,
-    pub snake_fruit: Color,
-
-    pub tetris_red: Color,
-    pub tetris_orange: Color,
-    pub tetris_yellow: Color,
-    pub tetris_green: Color,
-    pub tetris_cyan: Color,
-    pub tetris_blue: Color,
-    pub tetris_pink: Color,
+    pub wordle: WordleScheme,
+    pub snake: SnakeScheme,
+    pub tetris: TetrisScheme,
 }
 
 // server stuff

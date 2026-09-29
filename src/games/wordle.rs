@@ -3,7 +3,7 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Flex, Layout, Rect},
-    style::Stylize,
+    style::{Color, Stylize},
     text::Line,
     widgets::{Paragraph, StatefulWidget, Widget},
 };
@@ -11,7 +11,7 @@ use ratatui::{
 use crate::{
     app::{TerminalPane, key_label, make_block},
     colours::SCHEME,
-    types::{Focus, MainPane, ServerState, Wordle, WordleLetter},
+    types::{Focus, MainPane, ServerState},
 };
 
 const WORD_LENGTH: u16 = 5;
@@ -23,6 +23,31 @@ const KEYBOARD: &[&[char]] = &[
     &['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
     &['z', 'x', 'c', 'v', 'b', 'n', 'm'],
 ];
+
+#[derive(Clone, Copy)]
+enum WordleLetter {
+    Correct,
+    Hint,
+    Incorrect,
+    Unknown,
+}
+
+pub struct Wordle {
+    correct_word: String,
+    guesses: Vec<String>,
+    current_guess: String,
+}
+
+pub struct WordleScheme {
+    pub correct: Color,
+    pub correct_text: Color,
+    pub hint: Color,
+    pub hint_text: Color,
+    pub incorrect: Color,
+    pub incorrect_text: Color,
+    pub unknown: Color,
+    pub unknown_text: Color,
+}
 
 #[async_trait]
 impl TerminalPane for Wordle {
@@ -251,16 +276,16 @@ impl Wordle {
             Line::raw("   "),
         ])
         .bg(match letter_type {
-            WordleLetter::Correct => SCHEME.wordle_correct,
-            WordleLetter::Hint => SCHEME.wordle_hint,
-            WordleLetter::Incorrect => SCHEME.wordle_incorrect,
-            WordleLetter::Unknown => SCHEME.wordle_unknown,
+            WordleLetter::Correct => SCHEME.wordle.correct,
+            WordleLetter::Hint => SCHEME.wordle.hint,
+            WordleLetter::Incorrect => SCHEME.wordle.incorrect,
+            WordleLetter::Unknown => SCHEME.wordle.unknown,
         })
         .fg(match letter_type {
-            WordleLetter::Correct => SCHEME.wordle_correct_text,
-            WordleLetter::Hint => SCHEME.wordle_hint_text,
-            WordleLetter::Incorrect => SCHEME.wordle_incorrect_text,
-            WordleLetter::Unknown => SCHEME.wordle_unknown_text,
+            WordleLetter::Correct => SCHEME.wordle.correct_text,
+            WordleLetter::Hint => SCHEME.wordle.hint_text,
+            WordleLetter::Incorrect => SCHEME.wordle.incorrect_text,
+            WordleLetter::Unknown => SCHEME.wordle.unknown_text,
         })
     }
 

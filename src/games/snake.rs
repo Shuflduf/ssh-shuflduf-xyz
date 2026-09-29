@@ -4,7 +4,7 @@ use rand::random_range;
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
-    style::Stylize,
+    style::{Color, Stylize},
     text::Line,
     widgets::{Block, StatefulWidget, Widget},
 };
@@ -13,11 +13,24 @@ use crate::{
     app::{TerminalPane, key_label, make_block},
     colours::SCHEME,
     extra::RemoveFirst,
-    types::{Focus, MainPane, ServerState, Snake},
+    types::{Focus, MainPane, ServerState},
 };
 
 const BOARD_SIZE: i8 = 13;
 const MOVE_TIME: u8 = 20;
+
+pub struct Snake {
+    current_dir: (i8, i8),
+    queued_dirs: Vec<(i8, i8)>,
+    tiles: Vec<(i8, i8)>,
+    fruit_pos: (i8, i8),
+    move_timer: u8,
+}
+pub struct SnakeScheme {
+    pub body: Color,
+    pub head: Color,
+    pub fruit: Color,
+}
 
 #[async_trait]
 impl TerminalPane for Snake {
@@ -97,14 +110,14 @@ impl StatefulWidget for &Snake {
             {
                 let pos = (x as i8, y as i8);
                 if self.tiles.contains(&pos) {
-                    Block::new().bg(SCHEME.snake_body).render(*cell_area, buf);
+                    Block::new().bg(SCHEME.snake.body).render(*cell_area, buf);
                 }
                 if self.tiles[0] == pos {
-                    Block::new().bg(SCHEME.snake_head).render(*cell_area, buf);
+                    Block::new().bg(SCHEME.snake.head).render(*cell_area, buf);
                 }
 
                 if self.fruit_pos == pos {
-                    Block::new().bg(SCHEME.snake_fruit).render(*cell_area, buf);
+                    Block::new().bg(SCHEME.snake.fruit).render(*cell_area, buf);
                 }
             }
         }

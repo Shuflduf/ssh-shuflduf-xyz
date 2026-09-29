@@ -14,7 +14,8 @@ use crate::{
     types::{ClientState, Focus, MainPane, ServerMessage, ServerState},
 };
 
-mod counter;
+mod chat;
+pub mod counter;
 mod games;
 mod sidebar;
 
@@ -35,7 +36,7 @@ pub trait TerminalPane: Send {
 impl ClientState {
     pub fn apply_command(&mut self, command: &ServerMessage) {
         match command {
-            ServerMessage::CounterIncrement => self.counter.count += 1,
+            ServerMessage::CounterIncrement => self.counter.server_increment(),
         }
     }
 
@@ -102,6 +103,17 @@ impl ClientState {
                         .await;
                 }
             },
+        }
+    }
+
+    pub async fn tick(&mut self, needs_redraw: &mut bool) {
+        match self.current_pane {
+            MainPane::Counter => {
+                let _ = self.counter.tick(needs_redraw).await;
+            }
+            MainPane::Games => {
+                let _ = self.games.tick(needs_redraw).await;
+            }
         }
     }
 }

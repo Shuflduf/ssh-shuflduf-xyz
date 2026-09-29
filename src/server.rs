@@ -19,9 +19,12 @@ use tokio::sync::{
     mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel},
 };
 
-use crate::types::{
-    AppServer, ClientEvent, ClientMessage, ClientState, Counter, Focus, InputParser,
-    ServerState, SshTerminal, TerminalHandle,
+use crate::{
+    app::counter::Counter,
+    types::{
+        AppServer, ClientEvent, ClientMessage, ClientState, Focus, InputParser, ServerState,
+        SshTerminal, TerminalHandle,
+    },
 };
 
 impl AppServer {
@@ -220,7 +223,8 @@ async fn client_event_loop(
             },
 
             _ = tick.tick() => {
-                client_state.games.tick(&mut needs_redraw).await;
+                client_state.tick(&mut needs_redraw).await;
+                // client_state.games.tick(&mut needs_redraw).await;
             }
         }
 
@@ -270,17 +274,8 @@ async fn handle_message(
             KeyCode::Char('q') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
                 client_state.exiting = true;
             }
-            // KeyCode::Right => {
-            //     *server_state.current_value.lock().await += 1;
-            //     let _ = server_state.broadcast_sender.send(ServerMessage::Increment);
-            //     *needs_redraw = true;
-            // }
             KeyCode::Char('1') => client_state.set_focus(Focus::Sidebar, needs_redraw),
             KeyCode::Char('2') => client_state.set_focus(Focus::Pane, needs_redraw),
-            // KeyCode::Up => {
-            //     client_state.colour_index += 1;
-            //     *needs_redraw = true;
-            // }
             _ => {
                 client_state
                     .handle_key(key_event, server_state, needs_redraw)
@@ -308,10 +303,7 @@ impl Drop for AppServer {
 impl ServerState {
     async fn client_state(&self) -> ClientState {
         ClientState {
-            counter: Counter {
-                count: *self.current_value.lock().await,
-                ..Default::default()
-            },
+            counter: Counter::new(*self.current_value.lock().await),
             ..Default::default()
         }
     }
