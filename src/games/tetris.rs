@@ -3,21 +3,24 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use rand::seq::SliceRandom;
 use ratatui::{
     buffer::Buffer,
-    layout::{Constraint, Layout, Rect},
+    layout::{Constraint, Flex, Layout, Rect},
     style::{Color, Stylize},
-    widgets::{Block, StatefulWidget, Widget},
+    text::Line,
+    widgets::{Block, Paragraph, StatefulWidget, Widget},
 };
 use serde::Deserialize;
 
 use crate::{
     app::{TerminalPane, key_label, make_block},
     colours::SCHEME,
+    extra::RemoveFirst,
     types::{Focus, MainPane, ServerState},
 };
 
 pub const BOARD_SIZE: (i8, i8) = (10, 20);
 const GRAVITY_TIME: u8 = 50;
 const I_PIECE: usize = 4;
+const NEXT_COUNT: usize = 1;
 
 #[derive(Deserialize)]
 struct SRSTable {
@@ -32,6 +35,7 @@ pub struct Tetris {
     rot: usize,
     gravity_timer: u8,
     bag: Vec<usize>,
+    next: Vec<usize>,
     board: [[Option<usize>; 20]; 10],
     table: SRSTable,
 }
@@ -78,14 +82,41 @@ impl StatefulWidget for &Tetris {
         make_block(*focus == Focus::Pane)
             .title_top(key_label("2", "Tetris").centered())
             .title_top(key_label("Esc", "Go Back").left_aligned())
-            .title_bottom(key_label("Ctrl+R", "Retry").centered())
+            .title_bottom(
+                Line::from_iter(
+                    key_label("Ctrl+R", "Retry")
+                        .spans
+                        .into_iter()
+                        .chain(key_label("AD", "󰁍 󰁔").spans)
+                        .chain(key_label("W", "󰁅").spans)
+                        .chain(key_label("S", "󰞖").spans)
+                        .chain(key_label("󰁍 󰁔", "󱞭 󱞯").spans),
+                )
+                .centered(),
+            )
             .render(area, buf);
 
-        let area = area.centered(
-            Constraint::Length(BOARD_SIZE.0 as u16 * 2),
-            Constraint::Length(BOARD_SIZE.1 as u16),
+        let board_rect = Rect::new(0, 0, BOARD_SIZE.0 as u16 * 2, BOARD_SIZE.1 as u16);
+        let next_rect = Rect::new(
+            BOARD_SIZE.0 as u16 * 2 + 6,
+            0,
+            12,
+            NEXT_COUNT as u16 * 3 + 1,
         );
-        Block::new().bg(SCHEME.surface).render(area, buf);
+        let total_rect = board_rect.union(next_rect);
+
+        let area = area.centered(
+            Constraint::Length(total_rect.width),
+            Constraint::Length(total_rect.height),
+        );
+        let layout = Layout::horizontal([
+            Constraint::Length(board_rect.width),
+            Constraint::Length(next_rect.width),
+        ])
+        .flex(Flex::SpaceBetween)
+        .split(area);
+
+        Block::new().bg(SCHEME.surface).render(layout[0], buf);
 
         for (y, row_area) in Layout::vertical([Constraint::Length(1); BOARD_SIZE.1 as usize])
             .split(area)
@@ -116,18 +147,55 @@ impl StatefulWidget for &Tetris {
                 }
             }
         }
+
+        Block::new().bg(SCHEME.surface).render(
+            Layout::vertical([Constraint::Length(next_rect.height)]).split(layout[1])[0],
+            buf,
+        );
+
+        for (piece_idx, piece_area) in Layout::vertical([Constraint::Length(2); NEXT_COUNT])
+            .vertical_margin(1)
+            .horizontal_margin(2)
+            .spacing(1)
+            .split(layout[1])
+            .iter()
+            .enumerate()
+        {
+            for (y, row_area) in Layout::vertical([Constraint::Length(1); 2])
+                .split(*piece_area)
+                .iter()
+                .enumerate()
+            {
+                for (x, cell_area) in Layout::horizontal([Constraint::Length(2); 4])
+                    .split(*row_area)
+                    .iter()
+                    .enumerate()
+                {
+                    if self.table.pieces[self.next[piece_idx]][0].contains(&(x as i8, y as i8)) {
+                        Block::new()
+                            .bg(Tetris::get_col(self.next[piece_idx]))
+                            .render(*cell_area, buf);
+                    }
+                }
+            }
+        }
     }
 }
 
 impl Tetris {
     pub fn make_game() -> Tetris {
         let mut bag = Tetris::new_bag();
+        let next = ((0..=NEXT_COUNT)
+            .into_iter()
+            .map(|_| Tetris::next_from_bag(&mut bag)))
+        .collect();
         Tetris {
-            index: bag.pop().unwrap(),
+            index: Tetris::next_from_bag(&mut bag),
             pos: (3, 0),
             rot: 0,
             gravity_timer: GRAVITY_TIME,
             bag,
+            next,
             board: [[None; 20]; 10],
             table: serde_json::from_str(include_str!("tetris_srs.json")).unwrap(),
         }
@@ -157,6 +225,12 @@ impl Tetris {
             6 => SCHEME.tetris_pink,
             _ => unreachable!(),
         }
+    }
+    fn next_from_bag(bag: &mut Vec<usize>) -> usize {
+        bag.pop().unwrap_or_else(|| {
+            *bag = Tetris::new_bag();
+            bag.pop().unwrap()
+        })
     }
 
     fn try_move(&mut self, dir: (i8, i8)) -> bool {
@@ -218,10 +292,8 @@ impl Tetris {
     }
 
     fn reset_piece(&mut self) {
-        self.index = self.bag.pop().unwrap_or_else(|| {
-            self.bag = Tetris::new_bag();
-            self.bag.pop().unwrap()
-        });
+        self.index = self.next.pop_first().unwrap();
+        self.next.push(Tetris::next_from_bag(&mut self.bag));
         self.pos = (3, 0);
         self.rot = 0;
 

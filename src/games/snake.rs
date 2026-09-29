@@ -5,6 +5,7 @@ use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
     style::Stylize,
+    text::Line,
     widgets::{Block, StatefulWidget, Widget},
 };
 
@@ -68,7 +69,15 @@ impl StatefulWidget for &Snake {
         make_block(*focus == Focus::Pane)
             .title_top(key_label("2", "Snake").centered())
             .title_top(key_label("Esc", "Go Back").left_aligned())
-            .title_bottom(key_label("Ctrl+R", "Retry").centered())
+            .title_bottom(
+                Line::from_iter(
+                    key_label("Ctrl+R", "Retry")
+                        .spans
+                        .into_iter()
+                        .chain(key_label("WASD", "Move").spans),
+                )
+                .centered(),
+            )
             .render(area, buf);
 
         let area = area.centered(
