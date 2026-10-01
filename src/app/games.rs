@@ -14,7 +14,7 @@ use crate::{
     app::{TerminalPane, border_col, key_label, make_block},
     colours::SCHEME,
     games::{snake::Snake, tetris::Tetris, wordle::Wordle},
-    types::{Focus, Game, Games, MainPane, ServerState},
+    types::{Focus, Game, Games, Content, ServerState},
 };
 
 #[async_trait]
@@ -22,7 +22,7 @@ impl TerminalPane for Games {
     async fn handle_key(
         &mut self,
         key_event: KeyEvent,
-        current_pane: &mut MainPane,
+        current_pane: &mut Content,
         focus: &mut Focus,
         server_state: &ServerState,
         needs_redraw: &mut bool,

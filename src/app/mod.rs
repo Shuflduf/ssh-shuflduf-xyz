@@ -11,10 +11,10 @@ use ratatui::{
 
 use crate::{
     colours::SCHEME,
-    types::{ClientState, Focus, MainPane, ServerMessage, ServerState},
+    types::{ClientState, Content, Focus, ServerMessage, ServerState},
 };
 
-mod chat;
+pub mod chat;
 pub mod counter;
 mod games;
 mod sidebar;
@@ -24,7 +24,7 @@ pub trait TerminalPane: Send {
     async fn handle_key(
         &mut self,
         key_event: KeyEvent,
-        current_pane: &mut MainPane,
+        current_pane: &mut Content,
         focus: &mut Focus,
         server_state: &ServerState,
         needs_redraw: &mut bool,
@@ -46,11 +46,14 @@ impl ClientState {
 
         frame.render_stateful_widget(&self.sidebar, layout[0], &mut self.focus);
         match self.current_pane {
-            MainPane::Counter => {
+            Content::Counter => {
                 frame.render_stateful_widget(&self.counter, layout[1], &mut self.focus);
             }
-            MainPane::Games => {
+            Content::Games => {
                 frame.render_stateful_widget(&self.games, layout[1], &mut self.focus);
+            }
+            Content::Chat => {
+                frame.render_stateful_widget(&self.chat, layout[1], &mut self.focus);
             }
         }
         // frame.render_widget(&self.counter, layout[1]);
@@ -80,7 +83,7 @@ impl ClientState {
                     .await;
             }
             Focus::Pane => match self.current_pane {
-                MainPane::Counter => {
+                Content::Counter => {
                     self.counter
                         .handle_key(
                             key_event,
@@ -91,8 +94,19 @@ impl ClientState {
                         )
                         .await;
                 }
-                MainPane::Games => {
+                Content::Games => {
                     self.games
+                        .handle_key(
+                            key_event,
+                            &mut self.current_pane,
+                            &mut self.focus,
+                            server_state,
+                            needs_redraw,
+                        )
+                        .await;
+                }
+                Content::Chat => {
+                    self.chat
                         .handle_key(
                             key_event,
                             &mut self.current_pane,
@@ -108,12 +122,13 @@ impl ClientState {
 
     pub async fn tick(&mut self, needs_redraw: &mut bool) {
         match self.current_pane {
-            MainPane::Counter => {
+            Content::Counter => {
                 let _ = self.counter.tick(needs_redraw).await;
             }
-            MainPane::Games => {
+            Content::Games => {
                 let _ = self.games.tick(needs_redraw).await;
             }
+            _ => {}
         }
     }
 }

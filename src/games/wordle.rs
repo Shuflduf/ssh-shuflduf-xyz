@@ -11,7 +11,7 @@ use ratatui::{
 use crate::{
     app::{TerminalPane, key_label, make_block},
     colours::SCHEME,
-    types::{Focus, MainPane, ServerState},
+    types::{Focus, Content, ServerState},
 };
 
 const WORD_LENGTH: u16 = 5;
@@ -54,7 +54,7 @@ impl TerminalPane for Wordle {
     async fn handle_key(
         &mut self,
         key_event: KeyEvent,
-        _current_pane: &mut MainPane,
+        _current_pane: &mut Content,
         _focus: &mut Focus,
         _server_state: &ServerState,
         needs_redraw: &mut bool,
@@ -144,19 +144,17 @@ impl StatefulWidget for &Wordle {
                 let horse = row_idx == GUESS_COUNT as usize - 1
                     && self.guesses == ["horse"].repeat(GUESS_COUNT.into());
 
-                let mut remaining_letters =
-                    self.correct_word.clone().chars().collect::<Vec<char>>();
-
+                let guess: Vec<char> = guess.chars().collect();
                 guess
-                    .chars()
+                    .iter()
                     .enumerate()
-                    .map(|(pos, c)| {
+                    .map(|(pos, &c)| {
                         (
                             c,
                             if horse {
                                 WordleLetter::Correct
                             } else {
-                                self.letter_at(pos, c, &mut remaining_letters)
+                                self.letter_at(pos, &guess)
                             },
                         )
                     })
@@ -221,18 +219,37 @@ impl Wordle {
         let words = Wordle::answer_list();
         Self {
             correct_word: words[rand::random_range(0..words.len())].to_string(),
-            // correct_word: "horse".to_string(),
+            // correct_word: "grave".to_string(),
             guesses: vec![],
             current_guess: String::new(),
         }
     }
 
-    fn letter_at(&self, pos: usize, c: char, remaining: &mut [char]) -> WordleLetter {
-        if remaining[pos] == c {
-            remaining[pos] = ' ';
-            WordleLetter::Correct
-        } else if remaining.contains(&c) {
-            remaining[remaining.iter().position(|&letter| letter == c).unwrap()] = ' ';
+    fn letter_at(&self, pos: usize, guess: &[char]) -> WordleLetter {
+        let c = guess[pos];
+        let correct: Vec<char> = self.correct_word.chars().collect();
+
+        if c == correct[pos] {
+            return WordleLetter::Correct;
+        } else if !correct.contains(&c) {
+            return WordleLetter::Incorrect;
+        }
+
+        let correct_count = correct.iter().filter(|&&letter| letter == c).count();
+        let correctly_placed = guess
+            .iter()
+            .enumerate()
+            .filter(|&(i, &letter)| letter == c && correct[i] == c)
+            .count();
+
+        let available_hints = correct_count.saturating_sub(correctly_placed);
+        let incorrect_so_far = guess[..=pos]
+            .iter()
+            .enumerate()
+            .filter(|&(i, &letter)| letter == c && correct[i] != c)
+            .count();
+
+        if incorrect_so_far <= available_hints {
             WordleLetter::Hint
         } else {
             WordleLetter::Incorrect

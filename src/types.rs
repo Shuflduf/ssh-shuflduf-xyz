@@ -6,7 +6,7 @@ use strum::{Display, EnumCount, EnumIter, EnumProperty, VariantArray};
 use tokio::sync::{Mutex, broadcast, mpsc::UnboundedSender};
 
 use crate::{
-    app::counter::Counter,
+    app::{chat::Chat, counter::Counter},
     games::{
         snake::{Snake, SnakeScheme},
         tetris::{Tetris, TetrisScheme},
@@ -18,11 +18,14 @@ pub type SshTerminal = Terminal<CrosstermBackend<TerminalHandle>>;
 
 // client stuff
 
-#[derive(Default)]
-pub enum MainPane {
+#[derive(
+    Default, Debug, EnumIter, EnumCount, Display, VariantArray, PartialEq, Eq, Clone, Copy,
+)]
+pub enum Content {
     #[default]
     Counter,
     Games,
+    Chat,
 }
 
 #[derive(Default, PartialEq, Eq)]
@@ -32,18 +35,9 @@ pub enum Focus {
     Pane,
 }
 
-#[derive(
-    Default, Debug, EnumIter, EnumCount, Display, VariantArray, PartialEq, Eq, Clone, Copy,
-)]
-pub enum SidebarItem {
-    #[default]
-    Counter,
-    Games,
-}
-
 #[derive(Default)]
 pub struct Sidebar {
-    pub item: SidebarItem,
+    pub item: Content,
 }
 
 #[derive(
@@ -84,8 +78,9 @@ pub struct ClientState {
     pub sidebar: Sidebar,
     pub counter: Counter,
     pub games: Games,
+    pub chat: Chat,
 
-    pub current_pane: MainPane,
+    pub current_pane: Content,
     pub focus: Focus,
     pub exiting: bool,
 }

@@ -14,7 +14,7 @@ use crate::{
     app::{TerminalPane, key_label, make_block},
     colours::SCHEME,
     extra::RemoveFirst,
-    types::{Focus, MainPane, ServerState},
+    types::{Focus, Content, ServerState},
 };
 
 pub const BOARD_SIZE: (i8, i8) = (10, 20);
@@ -54,7 +54,7 @@ impl TerminalPane for Tetris {
     async fn handle_key(
         &mut self,
         key_event: KeyEvent,
-        _current_pane: &mut MainPane,
+        _current_pane: &mut Content,
         _focus: &mut Focus,
         _server_state: &ServerState,
         needs_redraw: &mut bool,
