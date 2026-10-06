@@ -44,6 +44,13 @@ impl TerminalPane for Chat {
                     *needs_redraw = true
                 }
             }
+            KeyCode::Delete => {
+                if self.cursor_pos < self.current_input.len() {
+                    self.current_input.remove(self.cursor_pos);
+                    // self.cursor_pos -= 1;
+                    *needs_redraw = true
+                }
+            }
             KeyCode::Left => {
                 if self.cursor_pos > 0 {
                     self.cursor_pos -= 1;
@@ -83,11 +90,8 @@ impl StatefulWidget for &Chat {
             .split(layout[1]);
         Block::new().bg(SCHEME.surface).render(layout[1], buf);
 
-        // if
         let spans = if self.cursor_pos < self.current_input.len() {
             let chars = self.current_input.chars().collect::<Vec<char>>();
-            // let odkjlf: String = chars[0..2].iter().collect();
-            // let around = self.current_input.split_at(self.cursor_pos);
             vec![
                 Span::raw(chars[..self.cursor_pos].iter().collect::<String>()),
                 Span::styled(
