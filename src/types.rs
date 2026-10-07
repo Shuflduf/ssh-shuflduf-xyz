@@ -104,6 +104,7 @@ pub struct ColourScheme {
 #[derive(Clone)]
 pub enum ServerMessage {
     CounterIncrement,
+    ChatMessage(String),
 }
 
 #[derive(Clone)]

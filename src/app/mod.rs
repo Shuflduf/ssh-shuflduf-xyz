@@ -37,6 +37,7 @@ impl ClientState {
     pub fn apply_command(&mut self, command: &ServerMessage) {
         match command {
             ServerMessage::CounterIncrement => self.counter.server_increment(),
+            ServerMessage::ChatMessage(message) => self.chat.add_message(message.clone()),
         }
     }
 

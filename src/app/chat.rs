@@ -11,11 +11,12 @@ use ratatui::{
 use crate::{
     app::{TerminalPane, key_label, make_block},
     colours::SCHEME,
-    types::{Content, Focus, ServerState},
+    types::{Content, Focus, ServerMessage, ServerState},
 };
 
 #[derive(Default)]
 pub struct Chat {
+    messages: Vec<String>,
     current_input: String,
     cursor_pos: usize,
 }
@@ -25,8 +26,8 @@ impl TerminalPane for Chat {
     async fn handle_key(
         &mut self,
         key_event: KeyEvent,
-        current_pane: &mut Content,
-        focus: &mut Focus,
+        _current_pane: &mut Content,
+        _focus: &mut Focus,
         server_state: &ServerState,
         needs_redraw: &mut bool,
     ) {
@@ -63,6 +64,14 @@ impl TerminalPane for Chat {
                     *needs_redraw = true
                 }
             }
+            KeyCode::Enter if !self.current_input.is_empty() => {
+                self.cursor_pos = 0;
+                let _ = server_state
+                    .broadcast_sender
+                    .send(ServerMessage::ChatMessage(self.current_input.clone()));
+                self.current_input = String::new();
+                *needs_redraw = true;
+            }
             _ => {}
         }
     }
@@ -83,6 +92,13 @@ impl StatefulWidget for &Chat {
             .horizontal_margin(2)
             .vertical_margin(1)
             .split(area);
+
+        let messages_layout =
+            Layout::vertical([Constraint::Length(3)].repeat(self.messages.len())).split(layout[0]);
+
+        for (i, message) in self.messages.iter().enumerate() {
+            Paragraph::new(message.clone()).render(messages_layout[i], buf);
+        }
 
         let input_text = Layout::vertical([Constraint::Length(text_height)])
             .horizontal_margin(2)
@@ -106,9 +122,14 @@ impl StatefulWidget for &Chat {
                 Span::styled(" ", Style::new().underlined()),
             ]
         };
-        println!("{spans:?}");
         Paragraph::new(Line::from(spans))
             .wrap(Wrap { trim: true })
             .render(input_text[0], buf);
+    }
+}
+
+impl Chat {
+    pub fn add_message(&mut self, message: String) {
+        self.messages.push(message);
     }
 }
